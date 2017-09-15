@@ -1,0 +1,12 @@
+[package]
+name = "wsl_hello_pam"
+version = "0.1.0"
+authors = ["Takaya Saeki <abc.tkys+pub@gmail.com>"]
+
+[lib]
+name = "pam_wsl_hello"
+crate-type = ["dylib"]
+
+[dependencies]
+libc = "0.2.0"
+openssl = "0.9.17"
