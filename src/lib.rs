@@ -7,7 +7,6 @@ use std::ffi::{CString, CStr};
 use std::borrow::{Cow};
 use std::ptr;
 use std::fs::File;
-use std::path::Path;
 use std::io;
 use std::io::prelude::*;
 use std::process::{Command, Stdio};
@@ -79,20 +78,40 @@ fn get_authenticator_path() -> Result<String, ConfigError> {
     Ok(authenticator_path.to_owned())
 }
 
-fn sm_authenticate(
-    pamh: *mut pam_handle_t,
-    flags: c_int,
-    argc: c_int,
-    argv: *mut *const c_char,
-) -> Result<i32, i32> {
+#[derive(Debug)]
+enum HelloAuthenticationError {
+    GetUserError(i32),
+    ConfigError(ConfigError),
+    PublicKeyFileError(io::Error),
+    Io(io::Error),
+    InvalidPublicKey(openssl::error::ErrorStack),
+    OpenSSLError(openssl::error::ErrorStack),
+    AuthenticatorLaunchError(io::Error),
+    AuthenticatorConnectionError(io::Error),
+    AuthenticationFail(i32),
+}
 
-    let user_name = get_user(pamh, None)?;
+impl From<io::Error> for HelloAuthenticationError {
+    fn from(err: io::Error) -> HelloAuthenticationError {
+        HelloAuthenticationError::Io(err)
+    }
+}
+
+impl From<ConfigError> for HelloAuthenticationError {
+    fn from(err: ConfigError) -> HelloAuthenticationError {
+        HelloAuthenticationError::ConfigError(err)
+    }
+}
+
+fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthenticationError> {
+
+    let user_name = get_user(pamh, None).map_err(|e| HelloAuthenticationError::GetUserError(e))?;
     let credential_key_name = format!("pam_wsl_hello_{}", user_name);
 
-    let mut hello_public_key_file = File::open(format!("/etc/pam_wsl_hello/public_keys/{}.pem", credential_key_name)).map_err(|_| PAM_AUTH_ERR)?;
+    let mut hello_public_key_file = File::open(format!("/etc/pam_wsl_hello/public_keys/{}.pem", credential_key_name)).map_err(|io| HelloAuthenticationError::PublicKeyFileError(io))?;
     let mut key_str = String::new();
-    hello_public_key_file.read_to_string(&mut key_str).map_err(|_| PAM_AUTH_ERR)?;
-    let hello_public_key = PKey::public_key_from_pem(key_str.as_bytes()).map_err(|_| PAM_AUTH_ERR)?;
+    hello_public_key_file.read_to_string(&mut key_str)?;
+    let hello_public_key = PKey::public_key_from_pem(key_str.as_bytes()).map_err(|e| HelloAuthenticationError::InvalidPublicKey(e))?;
 
     let challenge = format!("pam_wsl_hello:{}:{}", user_name, Uuid::new_v4());
 
@@ -100,38 +119,37 @@ fn sm_authenticate(
     // we create a temporary file to redirect
     let challenge_tmpfile_path = &format!("/tmp/{}", challenge);
     {
-        let mut challenge_tmpfile = File::create(challenge_tmpfile_path).map_err(|_| PAM_AUTH_ERR)?;
-        challenge_tmpfile.write_all(challenge.as_bytes()).map_err(|_| PAM_AUTH_ERR)?;
+        let mut challenge_tmpfile = File::create(challenge_tmpfile_path)?;
+        challenge_tmpfile.write_all(challenge.as_bytes())?;
     }
-    let challenge_tmpfile = File::open(challenge_tmpfile_path).map_err(|_| PAM_AUTH_ERR)?;
+    let challenge_tmpfile = File::open(challenge_tmpfile_path)?;
     let challenge_tmpfile_in = unsafe {Stdio::from_raw_fd(challenge_tmpfile.as_raw_fd())};
 
-    let authenticator_path = get_authenticator_path().map_err(|_| PAM_AUTH_ERR)?;
+    let authenticator_path = get_authenticator_path()?;
     let authenticator = Command::new(&authenticator_path)
         .arg(credential_key_name)
         .current_dir("/mnt/c")
         .stdin(challenge_tmpfile_in)
         .stdout(Stdio::piped())
         .spawn()
-        .map_err(|_| PAM_AUTH_ERR)?;
+        .map_err(|e| HelloAuthenticationError::AuthenticatorLaunchError(e))?;
 
     let output = authenticator
         .wait_with_output()
-        .map_err(|_| PAM_AUTH_ERR)?;
+        .map_err(|e| HelloAuthenticationError::AuthenticatorConnectionError(e))?;
     match output.status.code() {
         Some(code) if code == 0 => {/* Success */},
-        _ => {
-            return Err(PAM_AUTH_ERR);
-        }
+        Some(code) => return Err(HelloAuthenticationError::AuthenticationFail(code)),
+        None => return Err(HelloAuthenticationError::AuthenticationFail(1)),
     }
     let signature = output.stdout;
 
     let mut verifier = Verifier::new(MessageDigest::sha256(), &hello_public_key).unwrap();
-    verifier.update(challenge.as_bytes()).map_err(|_| PAM_AUTH_ERR);
+    verifier.update(challenge.as_bytes()).map_err(|e| HelloAuthenticationError::OpenSSLError(e))?;
 
-    match verifier.finish(&signature).map_err(|_| PAM_AUTH_ERR)? {
+    match verifier.finish(&signature).map_err(|e| HelloAuthenticationError::OpenSSLError(e))? {
         true => Ok(PAM_SUCCESS),
-        false => Err(PAM_AUTH_ERR),
+        false => Err(HelloAuthenticationError::AuthenticationFail(1)),
     }
 }
 
@@ -139,12 +157,12 @@ fn sm_authenticate(
 pub fn pam_sm_authenticate(
     pamh: *mut pam_handle_t,
     flags: c_int,
-    argc: c_int,
-    argv: *mut *const c_char,
+    _: c_int,
+    _: *mut *const c_char,
 ) -> c_int {
-    match sm_authenticate(pamh, flags, argc, argv) {
+    match authenticate_via_hello(pamh) {
         Ok(ok) => ok,
-        Err(err) => err,
+        Err(_) => 0,
     }
 }
 
