@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Windows.Security.Credentials;
 using Windows.Security.Cryptography;
+using Windows.Storage.Streams;
 
 namespace WindowsHelloKeyCredentialCreator
 {
@@ -14,18 +15,29 @@ namespace WindowsHelloKeyCredentialCreator
 
         static async Task<(int err, string pubKey)> CreatePublicKey(string key_name)
         {
+            int err;
             var createRes = await KeyCredentialManager.RequestCreateAsync(key_name, KeyCredentialCreationOption.FailIfExists);
+            IBuffer pubKey;
             if (createRes.Status == KeyCredentialStatus.CredentialAlreadyExists)
             {
-                return (ERR_CREAT_KEY_EXISTS, null);
+                var existing = await KeyCredentialManager.OpenAsync(key_name);
+                if (existing.Status != KeyCredentialStatus.Success)
+                {
+                    return (ERR_CREAT_FAIL, null);
+                }
+                err = ERR_CREAT_KEY_EXISTS;
+                pubKey = existing.Credential.RetrievePublicKey();
             }
             else if (createRes.Status != KeyCredentialStatus.Success)
             {
                 return (ERR_CREAT_FAIL, null);
             }
-            var pubKey = createRes.Credential.RetrievePublicKey();
+            else {
+                err = 0;
+                pubKey = createRes.Credential.RetrievePublicKey();
+            }
             var pem = String.Format("-----BEGIN PUBLIC KEY-----\n{0}\n-----END PUBLIC KEY-----\n", CryptographicBuffer.EncodeToBase64String(pubKey));
-            return (0, pem);
+            return (err, pem);
         }
 
         static void exit(int code, bool needPrompt)
@@ -68,8 +80,7 @@ namespace WindowsHelloKeyCredentialCreator
             var res = CreatePublicKey(key_name).Result;
             if (res.err == ERR_CREAT_KEY_EXISTS)
             {
-                Console.WriteLine("Error: The key already exists");
-                exit(res.err, needsPrompt);
+                Console.WriteLine("Error: The key already exists. Outputting The existing public key.");
             }
             else if (res.err > 0) {
                 Console.WriteLine("Error: Key creation failed due to some error");
@@ -77,8 +88,8 @@ namespace WindowsHelloKeyCredentialCreator
             }
 
             File.WriteAllText(String.Format("{0}.pem", key_name), res.pubKey);
-            Console.WriteLine("Key creation done");
-            exit(0, needsPrompt);
+            Console.WriteLine(String.Format("Done. The public credential key is written in '{0}.pem'", key_name));
+            exit(res.err, needsPrompt);
         }
     }
 }
