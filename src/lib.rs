@@ -6,8 +6,10 @@ use libc::{c_int, c_char};
 use std::ffi::{CString, CStr};
 use std::borrow::{Cow};
 use std::ptr;
-use std::fs::File;
+use std::fs;
+use std::fs::{File, OpenOptions};
 use std::io;
+use std::io::SeekFrom;
 use std::io::prelude::*;
 use std::process::{Command, Stdio};
 use std::os::unix::io::{AsRawFd, FromRawFd};
@@ -170,35 +172,41 @@ fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthentic
 
     let challenge = format!("pam_wsl_hello:{}:{}", user_name, Uuid::new_v4());
 
-    // Since there seems to be a bug that C# applications cannot read from pipes on WSL,
-    // we create a temporary file to redirect
+    let auth_res;
     let challenge_tmpfile_path = &format!("/tmp/{}", challenge);
     {
-        let mut challenge_tmpfile = File::create(challenge_tmpfile_path)?;
+        // Since there seems to be a bug that C# applications cannot read from pipes on WSL,
+        // we create a temporary file to redirect
+        let mut challenge_tmpfile = OpenOptions::new().write(true)
+            .read(true)
+            .create_new(true)
+            .open(challenge_tmpfile_path)?;
         challenge_tmpfile.write_all(challenge.as_bytes())?;
+        challenge_tmpfile.seek(SeekFrom::Start(0))?;
+        let challenge_tmpfile_in = unsafe {Stdio::from_raw_fd(challenge_tmpfile.as_raw_fd())};
+
+        let authenticator_path = get_authenticator_path()?;
+        let authenticator = Command::new(&authenticator_path)
+            .arg(credential_key_name)
+            .current_dir("/mnt/c")
+            .stdin(challenge_tmpfile_in)
+            .stdout(Stdio::piped())
+            .spawn()
+            .map_err(|e| HelloAuthenticationError::AuthenticatorLaunchError(e))?;
+
+        auth_res = authenticator
+            .wait_with_output()
+            .map_err(|e| HelloAuthenticationError::AuthenticatorConnectionError(e))?;
     }
-    let challenge_tmpfile = File::open(challenge_tmpfile_path)?;
-    let challenge_tmpfile_in = unsafe {Stdio::from_raw_fd(challenge_tmpfile.as_raw_fd())};
+    fs::remove_file(challenge_tmpfile_path)?;
 
-    let authenticator_path = get_authenticator_path()?;
-    let authenticator = Command::new(&authenticator_path)
-        .arg(credential_key_name)
-        .current_dir("/mnt/c")
-        .stdin(challenge_tmpfile_in)
-        .stdout(Stdio::piped())
-        .spawn()
-        .map_err(|e| HelloAuthenticationError::AuthenticatorLaunchError(e))?;
-
-    let output = authenticator
-        .wait_with_output()
-        .map_err(|e| HelloAuthenticationError::AuthenticatorConnectionError(e))?;
-    match output.status.code() {
+    match auth_res.status.code() {
         Some(code) if code == 0 => {/* Success */},
-        Some(_) => return Err(HelloAuthenticationError::HelloAuthenticationFail(String::from_utf8(output.stdout)
+        Some(_) => return Err(HelloAuthenticationError::HelloAuthenticationFail(String::from_utf8(auth_res.stdout)
                                                                                    .unwrap_or("invalid utf8 output".to_string()))),
         None => return Err(HelloAuthenticationError::AuthenticatorSignalled),
     }
-    let signature = output.stdout;
+    let signature = auth_res.stdout;
 
     let mut verifier = Verifier::new(MessageDigest::sha256(), &hello_public_key).unwrap();
     verifier.update(challenge.as_bytes()).map_err(|e| HelloAuthenticationError::OpenSSLError(e))?;
