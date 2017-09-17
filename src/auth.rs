@@ -1,7 +1,7 @@
 
-use libc::{c_int, c_char};
-use std::ffi::{CString, CStr};
-use std::borrow::{Cow};
+use libc::{c_char, c_int};
+use std::ffi::{CStr, CString};
+use std::borrow::Cow;
 use std::ptr;
 use std::fs;
 use std::fs::{File, OpenOptions};
@@ -34,11 +34,14 @@ pub fn pam_sm_authenticate(
         }
         match err {
             HelloAuthenticationError::PublicKeyFileError(ref err)
-                if err.kind() == io::ErrorKind::NotFound  => PAM_USER_UNKNOWN,
+                if err.kind() == io::ErrorKind::NotFound =>
+            {
+                PAM_USER_UNKNOWN
+            }
             HelloAuthenticationError::AuthenticatorLaunchError(_) => PAM_AUTHINFO_UNAVAIL,
-                HelloAuthenticationError::AuthenticatorConnectionError(_) => PAM_AUTHINFO_UNAVAIL,
-                HelloAuthenticationError::AuthenticatorSignalled => PAM_AUTHINFO_UNAVAIL,
-                _ => PAM_AUTH_ERR,
+            HelloAuthenticationError::AuthenticatorConnectionError(_) => PAM_AUTHINFO_UNAVAIL,
+            HelloAuthenticationError::AuthenticatorSignalled => PAM_AUTHINFO_UNAVAIL,
+            _ => PAM_AUTH_ERR,
         }
     })
 }
@@ -88,7 +91,9 @@ impl fmt::Display for ConfigError {
             ConfigError::Io(ref ioerr) => write!(f, "{}", ioerr),
             ConfigError::Toml(_) => write!(f, "TOML format error"),
             ConfigError::MissingField(_) => write!(f, "field: 'authenticator_path' is not found"),
-            ConfigError::InvalidValueType(_) => write!(f, "field: 'authenticator_path' has an invalid value type"),
+            ConfigError::InvalidValueType(_) => {
+                write!(f, "field: 'authenticator_path' has an invalid value type")
+            }
         }
     }
 }
@@ -99,10 +104,13 @@ fn get_authenticator_path() -> Result<String, ConfigError> {
     config_file.read_to_string(&mut config)?;
 
     let config_value = config.parse::<Value>()?;
-    let authenticator_path = config_value.get("authenticator_path")
+    let authenticator_path = config_value
+        .get("authenticator_path")
         .ok_or(ConfigError::MissingField("authenticator_path".to_owned()))?
         .as_str()
-        .ok_or(ConfigError::InvalidValueType("authenticator_path".to_owned()))?;
+        .ok_or(ConfigError::InvalidValueType(
+            "authenticator_path".to_owned(),
+        ))?;
     Ok(authenticator_path.to_owned())
 }
 
@@ -136,53 +144,48 @@ impl From<ConfigError> for HelloAuthenticationError {
 impl fmt::Display for HelloAuthenticationError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            HelloAuthenticationError::ConfigError(ref err) => {
-                write!(f, "config error; {}", err)
-            },
-            HelloAuthenticationError::PublicKeyFileError(ref err) => {
-                match err.kind() {
-                   io::ErrorKind::NotFound => {
-                       write!(f, "cannot find the credential public key for this user")
-                   },
-                   _ => {
-                       write!(f, "{}", err)
-                   },
+            HelloAuthenticationError::ConfigError(ref err) => write!(f, "config error; {}", err),
+            HelloAuthenticationError::PublicKeyFileError(ref err) => match err.kind() {
+                io::ErrorKind::NotFound => {
+                    write!(f, "cannot find the credential public key for this user")
                 }
+                _ => write!(f, "{}", err),
             },
-            HelloAuthenticationError::Io(ref err) => {
-                write!(f, "{}", err)
-            },
+            HelloAuthenticationError::Io(ref err) => write!(f, "{}", err),
             HelloAuthenticationError::InvalidPublicKey(_) => {
                 write!(f, "the pem file of the public key is invalid")
-            },
+            }
             HelloAuthenticationError::AuthenticatorLaunchError(ref err) => {
                 write!(f, "cannot launch Windows Hello; {}", err)
-            },
+            }
             HelloAuthenticationError::AuthenticatorConnectionError(ref err) => {
                 write!(f, "cannot communicate with Windows Hello; {}", err)
-            },
+            }
             HelloAuthenticationError::HelloAuthenticationFail(ref msg) => {
                 write!(f, "authentication failed; {}", msg)
-            },
-            HelloAuthenticationError::SignAuthenticationFail => {
-                write!(f, "the result of signature verification of the credential is failure")
-            },
-            ref err => {
-                write!(f, "internal error; {:?}", err)
             }
+            HelloAuthenticationError::SignAuthenticationFail => write!(
+                f,
+                "the result of signature verification of the credential is failure"
+            ),
+            ref err => write!(f, "internal error; {:?}", err),
         }
     }
 }
 
 fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthenticationError> {
-
     let user_name = get_user(pamh, None).map_err(|e| HelloAuthenticationError::GetUserError(e))?;
     let credential_key_name = format!("pam_wsl_hello_{}", user_name);
 
-    let mut hello_public_key_file = File::open(format!("/etc/pam_wsl_hello/public_keys/{}.pem", credential_key_name)).map_err(|io| HelloAuthenticationError::PublicKeyFileError(io))?;
+    let mut hello_public_key_file =
+        File::open(format!(
+            "/etc/pam_wsl_hello/public_keys/{}.pem",
+            credential_key_name
+        )).map_err(|io| HelloAuthenticationError::PublicKeyFileError(io))?;
     let mut key_str = String::new();
     hello_public_key_file.read_to_string(&mut key_str)?;
-    let hello_public_key = PKey::public_key_from_pem(key_str.as_bytes()).map_err(|e| HelloAuthenticationError::InvalidPublicKey(e))?;
+    let hello_public_key = PKey::public_key_from_pem(key_str.as_bytes())
+        .map_err(|e| HelloAuthenticationError::InvalidPublicKey(e))?;
 
     let challenge = format!("pam_wsl_hello:{}:{}", user_name, Uuid::new_v4());
 
@@ -191,13 +194,14 @@ fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthentic
     {
         // Since there seems to be a bug that C# applications cannot read from pipes on WSL,
         // we create a temporary file to redirect
-        let mut challenge_tmpfile = OpenOptions::new().write(true)
+        let mut challenge_tmpfile = OpenOptions::new()
+            .write(true)
             .read(true)
             .create_new(true)
             .open(challenge_tmpfile_path)?;
         challenge_tmpfile.write_all(challenge.as_bytes())?;
         challenge_tmpfile.seek(SeekFrom::Start(0))?;
-        let challenge_tmpfile_in = unsafe {Stdio::from_raw_fd(challenge_tmpfile.as_raw_fd())};
+        let challenge_tmpfile_in = unsafe { Stdio::from_raw_fd(challenge_tmpfile.as_raw_fd()) };
 
         let authenticator_path = get_authenticator_path()?;
         let authenticator = Command::new(&authenticator_path)
@@ -208,24 +212,32 @@ fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthentic
             .spawn()
             .map_err(|e| HelloAuthenticationError::AuthenticatorLaunchError(e))?;
 
-        auth_res = authenticator
-            .wait_with_output()
-            .map_err(|e| HelloAuthenticationError::AuthenticatorConnectionError(e))?;
+        auth_res = authenticator.wait_with_output().map_err(|e| {
+            HelloAuthenticationError::AuthenticatorConnectionError(e)
+        })?;
     }
     fs::remove_file(challenge_tmpfile_path)?;
 
     match auth_res.status.code() {
-        Some(code) if code == 0 => {/* Success */},
-        Some(_) => return Err(HelloAuthenticationError::HelloAuthenticationFail(String::from_utf8(auth_res.stdout)
-                                                                                   .unwrap_or("invalid utf8 output".to_string()))),
+        Some(code) if code == 0 => { /* Success */ }
+        Some(_) => {
+            return Err(HelloAuthenticationError::HelloAuthenticationFail(
+                String::from_utf8(auth_res.stdout).unwrap_or("invalid utf8 output".to_string()),
+            ))
+        }
         None => return Err(HelloAuthenticationError::AuthenticatorSignalled),
     }
     let signature = auth_res.stdout;
 
     let mut verifier = Verifier::new(MessageDigest::sha256(), &hello_public_key).unwrap();
-    verifier.update(challenge.as_bytes()).map_err(|e| HelloAuthenticationError::OpenSSLError(e))?;
+    verifier
+        .update(challenge.as_bytes())
+        .map_err(|e| HelloAuthenticationError::OpenSSLError(e))?;
 
-    match verifier.finish(&signature).map_err(|e| HelloAuthenticationError::OpenSSLError(e))? {
+    match verifier
+        .finish(&signature)
+        .map_err(|e| HelloAuthenticationError::OpenSSLError(e))?
+    {
         true => Ok(PAM_SUCCESS),
         false => Err(HelloAuthenticationError::SignAuthenticationFail),
     }
