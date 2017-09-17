@@ -1,5 +1,5 @@
 
-.PHONY: install all release
+.PHONY: all clean install
 
 all: build/pam_wsl_hello.so\
      build/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe\
@@ -40,6 +40,14 @@ clean:
 	cd ./win_components/WindowsHelloAuthenticator;\
 	MSBuild.exe "/t:Clean" "/p:Configuration=Release"
 	rm -rf build
+	rm -rf release
+	rm release.tar.gz
 
 install: all
 	./install.sh
+
+release: all
+	mkdir -p release
+	cp -R build release/
+	cp install.sh release/
+	tar cvzf release.tar.gz release
