@@ -1,12 +1,10 @@
 # WSL Hello sudo
 
-"WSL-Hello-sudo" is a Linux PAM module and companion Windows CLI apps that realize `sudo` 
-by *biometric login of [Windows Hello](https://www.microsoft.com/en-us/windows/windows-hello)* on _Windows Subsystem for Linux (WSL)_ or, _Bash on Ubuntu on Windows_.
+"WSL-Hello-sudo" is a Linux PAM module and companion Windows CLI apps that realize `sudo` by
+biometric login of [Windows Hello](https://www.microsoft.com/en-us/windows/windows-hello) on Windows Subsystem for Linux (WSL) or, Bash on Ubuntu on Windows.
 This PAM module allows you to authenticate `sudo` via face recognition, fingerprint authentication, and of couse machine-local PIN.
-The Linux PAM module is written in Rust, and companion Windows CLI apps are written in C#.
-`sudo` calls the PAM module to authenticate a user, and the PAM module invokes the companion apps to authenticate a corresponding Windows user via Windows Hello.
 
-_Warning_
+__Warning__
 
 This is an experimental product. There is no warranty at all.
 
@@ -14,7 +12,8 @@ This is an experimental product. There is no warranty at all.
 
 ### Installation
 
-The installation process is very simple. Please download the latest release package from GitHub Release and unpack it.  
+The installation process is very simple.  
+Please download the latest release package from GitHub Release and unpack it.  
 Run `install.sh` inside the directory, and follow the instruction of `install.sh`
 
 
@@ -25,8 +24,8 @@ $ cd release
 $ ./install.sh
 ```
 
-Although you don't have to care about the detailed installation process because `install.sh` will  
-show kind instructions for you, `install.sh` does following things.
+Although you don't have to care about the detailed installation process,  
+`install.sh` does following things.
 
 1. Copy small Windows CLI apps that launch Windows Hello in `C:\Users\your_account\pam_wsl_hello` (default location)  
 2. Install a PAM module to your WSL system.
@@ -35,7 +34,7 @@ show kind instructions for you, `install.sh` does following things.
 
 ### Setup
 
-"WSL-Hello-sudo" is not a fork of `sudo` but a PAM module. So please `/etc/pam.d/sudo` to make it effective.
+"WSL-Hello-sudo" is not a fork of `sudo` but a PAM module. So please `/etc/pam.d/sudo` to make it effective.  
 Add `auth sufficient pam_wsl_hello.so` to the top line of your `/etc/pam.d/sudo` like the following example
 
 ```
@@ -48,15 +47,15 @@ session    required   pam_env.so readenv=1 envfile=/etc/default/locale user_read
 @include common-account
 @include common-session-noninteractive
 ```
-Even if you fail to authenticate via Windows Hello, `sudo` moves on to regular password authentication by this setting of `sufficient`.
-*However, I strongly recommend to set password to root user to allow you to login as root via `su` to prevent unexpected emergency situation*. 
+Even if you fail to authenticate via Windows Hello, `sudo` moves on to the regular password authentication by this setting with `sufficient`.  
+__However, I strongly recommend to set password to root user to allow you to login as root via `su` to prevent unexpected emergency situation.__
 
-`pam_wsl_hello.so` is a PAM module, so other applications that authenticate users such as `su` can also utilize Windows Hello.
-Even so, _I strongly recommend you to make either `sudo` or `su` free from this module for the above reason_ 
+Other applications that authenticate users such as `su` can also utilize Windows Hello by this module.  
+Even so, __I strongly recommend you to make either `sudo` or `su` free from this module for the above reason__
 
 #### "Windows Hello is not invoked! `sudo` just prompts password!"
 
-Maybe some error is happening. Unfortunately, `sudo` suppresses error messages from PAM modules.
+Maybe some error is happening. Unfortunately, `sudo` suppresses error messages from PAM modules.  
 To debug "WSL-Hello-sudo", make it effective for `su` instead of `sudo`. `su` shows error messages from PAM modules,
 so you can see what is going on.
 
