@@ -8,6 +8,8 @@ __Warning__
 
 This is an experimental product. There is no warranty at all.
 
+![demo](https://github.com/nullpo-head/WSL-Hello-sudo/blob/master/demo.gif)
+
 ## Installation and Setup
 
 ### Installation
