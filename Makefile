@@ -15,6 +15,7 @@ build/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe: build FORCE
 	  exit 1; \
 	fi
 	cd ./win_components/WindowsHelloAuthenticator;\
+	MSBuild.exe "/t:Restore"
 	MSBuild.exe "/t:Build" "/p:Configuration=Release"
 	mkdir -p build/WindowsHelloAuthenticator
 	cp ./win_components/WindowsHelloAuthenticator/WindowsHelloAuthenticator/bin/Release/* build/WindowsHelloAuthenticator/
@@ -25,6 +26,7 @@ build/WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe: bui
 	  exit 1; \
 	fi
 	cd ./win_components/WindowsHelloKeyCredentialCreator;\
+	MSBuild.exe "/t:Restore"
 	MSBuild.exe "/t:Build" "/p:Configuration=Release"
 	mkdir -p build/WindowsHelloKeyCredentialCreator
 	cp ./win_components/WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator/bin/Release/* build/WindowsHelloKeyCredentialCreator/
