@@ -59,7 +59,7 @@ Even so, __I strongly recommend you to make either `sudo` or `su` free from this
 
 ## Troubleshooting
 
-## Windows Hello window appears in background.
+### Windows Hello window appears in background.
 
 The Windows Hello dialog sometimes appears in background.
 In some cases, it even fails to recognize your face with some weird error message.
