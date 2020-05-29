@@ -1,11 +1,11 @@
 # WSL Hello sudo
 
 "WSL Hello sudo" is a Linux PAM module and companion Windows CLI apps that realize `sudo` by
-biometric login of [Windows Hello](https://www.microsoft.com/en-us/windows/windows-hello) on Windows Subsystem for Linux (WSL).
+biometric login of [Windows Hello](https://www.microsoft.com/en-us/windows/windows-hello) on Windows Subsystem for Linux (WSL).  
 This PAM module allows you to authenticate `sudo` via face recognition, fingerprint authentication, and of couse machine-local PIN.
 It runs in both WSL and WSL 2.
 
-The Linux PAM module is written in Rust, and Windows CLI apps are written in C#.
+The Linux PAM module is written in Rust, and Windows CLI apps are written in C#.  
 Please use it at your own risk. There is no warranty.
 
 ![demo](https://github.com/nullpo-head/WSL-Hello-sudo/blob/master/demo.gif)
@@ -22,7 +22,7 @@ Please download the latest release package from GitHub Release and unpack it.
 Run `install.sh` inside the directory, and follow the instruction of `install.sh`
 
 ```ShellSession
-$ wget https://github.com/nullpo-head/WSL-Hello-sudo/releases/download/v1.0.0/release.tar.gz
+$ wget http://github.com/nullpo-head/WSL-Hello-sudo/releases/latest/download/release.tar.gz
 $ tar xvf release.tar.gz
 $ cd release
 $ ./install.sh
