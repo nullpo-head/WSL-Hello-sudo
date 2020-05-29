@@ -16,9 +16,22 @@ prompt_yn () {
   fi
 }
 
+echo_warn () {
+  echo -e "\e[31m$*\e[m"
+}
+
 echo_stage () {
   echo -e "\e[32m$*\e[m"
 }
+
+check_pam_directory () {
+  if [[ -e "$1" && "$(find "$1" -maxdepth 1 -name 'pam_*.so')" ]]; then
+    true
+  else
+    false
+  fi
+}
+
 
 if [ `whoami` = "root" ]; then
   echo "Please run this with normal user instead of root. Aborting"
@@ -31,8 +44,14 @@ if [ ! -e build/pam_wsl_hello.so ] || \
     exit 1
 fi
 
-WINUSER=`/mnt/c/Windows/System32/cmd.exe /C "echo | set /p dummy=%username%"` # Hacky. Get Windows's user name without new line
-DEF_PAM_WSL_HELLO_WINPATH="/mnt/c/Users/$WINUSER/pam_wsl_hello"
+MNT=/mnt/c
+if [[ ! -e "${MNT}" ]]; then
+  echo "'/mnt/c' is not found. Please input your mount point of C drive to invoke Windows commands."
+  echo -n ": "
+  read MNT
+fi
+WINUSER=`${MNT}/Windows/System32/cmd.exe /C "echo | set /p dummy=%username%"` # Hacky. Get Windows's user name without new line
+DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/pam_wsl_hello"
 echo "Input the install location for Windows Hello authentication components."
 echo "They are Windows .exe files and required to be in a valid Windows directory"
 echo -n "Default [${DEF_PAM_WSL_HELLO_WINPATH}] :" 
@@ -53,10 +72,29 @@ cp -r build/{WindowsHelloAuthenticator,WindowsHelloKeyCredentialCreator} "$PAM_W
 
 set +x
 echo_stage "[2/5] Installing PAM module to the Linux system..."
+SECURITY_PATH="/lib/x86_64-linux-gnu/security/" 
+if ! check_pam_directory "${SECURITY_PATH}"; then
+  echo "PAM directory is not found in '/lib/x86_64-linux-gnu/security/'. It looks you're not running Ubuntu nor Debian."
+  echo "Checking '/lib/security/'..."
+  SECURITY_PATH="/lib/security/" 
+  while ! check_pam_directory "${SECURITY_PATH}"; do
+    echo "PAM module directory is not found in '${SECURITY_PATH}'."
+    echo "Please input the path of the PAM module's directory."
+    echo -n ": "
+    read SECURITY_PATH
+  done
+fi
+echo "Confirmed the '${SECURITY_PATH}' is the PAM module directory."
+PAM_SO="${SECURITY_PATH}/pam_wsl_hello.so"
+if [ -e "${PAM_SO}" ]; then
+  echo_warn "WARN: '${PAM_SO}' is already in use. 'sudo cp' might crash."
+  echo_warn "WARN: In that case, please run the old uninstall.sh, or delete old pam_wsl_hello.so manually first."
+  echo_warn "WARN: You can rerun this install.sh after that."
+fi
 set -x
-sudo cp build/pam_wsl_hello.so /lib/x86_64-linux-gnu/security/
-sudo chown root:root /lib/x86_64-linux-gnu/security/pam_wsl_hello.so
-sudo chmod 644 /lib/x86_64-linux-gnu/security/pam_wsl_hello.so
+sudo cp build/pam_wsl_hello.so "${SECURITY_PATH}"/
+sudo chown root:root "${SECURITY_PATH}"/pam_wsl_hello.so
+sudo chmod 644 "${SECURITY_PATH}"/pam_wsl_hello.so
 
 set +x
 echo_stage "[3/5] Createing the config files of WSL-Hello-sudo..."
@@ -86,7 +124,7 @@ if [ ! -e "uninstall.sh" ] || prompt_yn "'uninstall.sh' already exists. Overwrit
   echo -e "\e[31mNote: Please ensure that config files in /etc/pam.d/ are restored to as they were before WSL-Hello-sudo was installed\e[m"
   set -x
   sudo rm -rf /etc/pam_wsl_hello
-  sudo rm /lib/x86_64-linux-gnu/security/pam_wsl_hello.so
+  sudo rm "${SECURITY_PATH}/pam_wsl_hello.so"
   rm -rf ${PAM_WSL_HELLO_WINPATH}
 EOS
   chmod +x uninstall.sh
