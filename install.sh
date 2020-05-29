@@ -16,10 +16,6 @@ prompt_yn () {
   fi
 }
 
-echo_warn () {
-  echo -e "\e[31m$*\e[m"
-}
-
 echo_stage () {
   echo -e "\e[32m$*\e[m"
 }
@@ -72,11 +68,11 @@ cp -r build/{WindowsHelloAuthenticator,WindowsHelloKeyCredentialCreator} "$PAM_W
 
 set +x
 echo_stage "[2/5] Installing PAM module to the Linux system..."
-SECURITY_PATH="/lib/x86_64-linux-gnu/security/" 
+SECURITY_PATH="/lib/x86_64-linux-gnu/security" 
 if ! check_pam_directory "${SECURITY_PATH}"; then
   echo "PAM directory is not found in '/lib/x86_64-linux-gnu/security/'. It looks you're not running Ubuntu nor Debian."
   echo "Checking '/lib/security/'..."
-  SECURITY_PATH="/lib/security/" 
+  SECURITY_PATH="/lib/security" 
   while ! check_pam_directory "${SECURITY_PATH}"; do
     echo "PAM module directory is not found in '${SECURITY_PATH}'."
     echo "Please input the path of the PAM module's directory."
@@ -87,14 +83,19 @@ fi
 echo "Confirmed the '${SECURITY_PATH}' is the PAM module directory."
 PAM_SO="${SECURITY_PATH}/pam_wsl_hello.so"
 if [ -e "${PAM_SO}" ]; then
-  echo_warn "WARN: '${PAM_SO}' is already in use. 'sudo cp' might crash."
-  echo_warn "WARN: In that case, please run the old uninstall.sh, or delete old pam_wsl_hello.so manually first."
-  echo_warn "WARN: You can rerun this install.sh after that."
+  if prompt_yn "'${PAM_SO}' is in use. Do you proceed to remove the current? [Y/n]" "y"; then 
+    set -x
+    sudo rm "${PAM_SO}"
+    set +x
+  else
+    echo "Installation is cancelled. You can rerun this install.sh after that."
+    exit
+  fi
 fi
 set -x
-sudo cp build/pam_wsl_hello.so "${SECURITY_PATH}"/
-sudo chown root:root "${SECURITY_PATH}"/pam_wsl_hello.so
-sudo chmod 644 "${SECURITY_PATH}"/pam_wsl_hello.so
+sudo cp build/pam_wsl_hello.so "${SECURITY_PATH}/"
+sudo chown root:root "${SECURITY_PATH}/pam_wsl_hello.so"
+sudo chmod 644 "${SECURITY_PATH}/pam_wsl_hello.so"
 
 set +x
 echo_stage "[3/5] Createing the config files of WSL-Hello-sudo..."
