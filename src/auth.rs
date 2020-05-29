@@ -235,7 +235,7 @@ fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthentic
         .map_err(|e| HelloAuthenticationError::OpenSSLError(e))?;
 
     match verifier
-        .finish(&signature)
+        .verify(&signature)
         .map_err(|e| HelloAuthenticationError::OpenSSLError(e))?
     {
         true => Ok(PAM_SUCCESS),
