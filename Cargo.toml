@@ -1,6 +1,6 @@
 [package]
 name = "wsl_hello_pam"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Takaya Saeki <abc.tkys+pub@gmail.com>"]
 
 [lib]
