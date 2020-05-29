@@ -85,7 +85,7 @@ namespace WindowsHelloAuthenticator
             {
                 Console.WriteLine("Usage: WindowsHelloAuthenticator.exe credential_key_name");
                 Console.WriteLine("");
-                Console.WriteLine("This program authenticate the current user by Windows Hello,");
+                Console.WriteLine("This program authenticates the current user by Windows Hello,");
                 Console.WriteLine("and outputs a signature of the signed input from stdin to stdout.");
                 Console.WriteLine("The input will be signed by a private key that is associated with 'credential_key_name'");
                 Environment.Exit(1);
