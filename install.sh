@@ -55,10 +55,10 @@ read PAM_WSL_HELLO_WINPATH
 if [ -z "$PAM_WSL_HELLO_WINPATH" ]; then
   PAM_WSL_HELLO_WINPATH=$DEF_PAM_WSL_HELLO_WINPATH
 fi
-if [ ! -e $PAM_WSL_HELLO_WINPATH ]; then
+if [ ! -e "$PAM_WSL_HELLO_WINPATH" ]; then
   if prompt_yn "'$PAM_WSL_HELLO_WINPATH' does not exist. Create it? [Y/n]" "y"; then
     set -x
-    mkdir -p $PAM_WSL_HELLO_WINPATH
+    mkdir -p "$PAM_WSL_HELLO_WINPATH"
   fi
 fi
 set +x
@@ -112,7 +112,7 @@ fi
 echo "Please authenticate yourself now to create a credential for '$USER' and '$WINUSER' pair."
 KEY_ALREADY_EXIST_ERR=170
 set -x
-pushd $PAM_WSL_HELLO_WINPATH
+pushd "$PAM_WSL_HELLO_WINPATH"
 WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe pam_wsl_hello_$USER|| test $? = $KEY_ALREADY_EXIST_ERR
 sudo mkdir -p /etc/pam_wsl_hello/public_keys
 popd
