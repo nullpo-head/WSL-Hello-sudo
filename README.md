@@ -96,6 +96,7 @@ $ make
 ```
 It invokes `cargo` and `MSBuild.exe` properly.
 
+> Whether you're using `bash` or Windows, the repository must be in the Windows filesystem, otherwise `MSBuild.exe` won't work.
 
 ## Internals
 
