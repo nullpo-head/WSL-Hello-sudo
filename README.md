@@ -34,11 +34,21 @@ Although you don't have to care about the detailed installation process,
 1. Copy small Windows CLI apps that launch Windows Hello to `C:\Users\your_account\pam_wsl_hello` (default location)  
 2. Install a PAM module to your WSL system.
 3. Create config files in `/etc/pam_wsl_hello/`
-4. Create `uninstall.sh`
+4. Create a pam-configs entry in `/usr/share/pam-configs/` for automatic PAM configuration
+5. Create `uninstall.sh`
 
 ### Configuration
 
-"WSL Hello sudo" is not a fork of `sudo` but a PAM module. So please configure `/etc/pam.d/sudo` to make it effective.  
+"WSL Hello sudo" is not a fork of `sudo` but a PAM module. You have to adjust the PAM configuration to make it effective.
+
+#### Automatic configuration
+On Ubuntu, you can use `sudo pam-auth-update` to show a list of installed PAM authentication modules, and select the ones you want to use for authentication (which will also affect sudo etc.)
+
+The install scripts will install the required configuration. If you're not using the install script, you can copy the pam-config file from the release tarball to `/usr/share/pam-configs/`.
+
+#### Manual configuration
+
+If for some reason you do not want to use automatic configuration, you can configure `/etc/pam.d/sudo` manually.
 I strongly recommend to set password of root first so that you can switch to it by `su`, in case you make some typo in the config of `sudo`.  
 Add `auth sufficient pam_wsl_hello.so` to the top line of your `/etc/pam.d/sudo` like the following example  
 

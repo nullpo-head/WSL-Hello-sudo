@@ -35,5 +35,5 @@ install: all
 release: all
 	mkdir -p $(RELEASE)
 	cp -R build $(RELEASE)/
-	cp install.sh $(RELEASE)/
+	cp install.sh pam-config $(RELEASE)/
 	tar cvzf $(RELEASE).tar.gz $(RELEASE)

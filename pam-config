@@ -1,0 +1,7 @@
+Name: WSL Hello authentication
+Default: no
+Priority: 260
+Auth-Type: Primary
+Auth:
+        [success=end default=ignore]    pam_wsl_hello.so
+
