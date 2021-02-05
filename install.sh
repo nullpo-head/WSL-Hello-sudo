@@ -16,8 +16,11 @@ prompt_yn () {
   fi
 }
 
+STEPS=5
+CURRENT_STEP=0
 echo_stage () {
-  echo -e "\e[32m$*\e[m"
+  let CURRENT_STEP=CURRENT_STEP+1
+  echo -e "\e[32m[$CURRENT_STEP/$STEPS] $*\e[m"
 }
 
 check_pam_directory () {
@@ -62,12 +65,12 @@ if [ ! -e "$PAM_WSL_HELLO_WINPATH" ]; then
   fi
 fi
 set +x
-echo_stage "[1/5] Installing Windows components of WSL-Hello-sudo..."
+echo_stage "Installing Windows components of WSL-Hello-sudo..."
 set -x
 cp -r build/{WindowsHelloAuthenticator,WindowsHelloKeyCredentialCreator} "$PAM_WSL_HELLO_WINPATH/"
 
 set +x
-echo_stage "[2/5] Installing PAM module to the Linux system..."
+echo_stage "Installing PAM module to the Linux system..."
 SECURITY_PATH="/lib/x86_64-linux-gnu/security" 
 if ! check_pam_directory "${SECURITY_PATH}"; then
   echo "PAM directory was not found in '/lib/x86_64-linux-gnu/security/'. It looks like you're not running Ubuntu nor Debian."
@@ -98,7 +101,7 @@ sudo chown root:root "${SECURITY_PATH}/pam_wsl_hello.so"
 sudo chmod 644 "${SECURITY_PATH}/pam_wsl_hello.so"
 
 set +x
-echo_stage "[3/5] Creating the config files of WSL-Hello-sudo..."
+echo_stage "Creating the config files of WSL-Hello-sudo..."
 set -x
 sudo mkdir -p /etc/pam_wsl_hello/
 set +x
@@ -119,7 +122,7 @@ popd
 sudo cp "$PAM_WSL_HELLO_WINPATH"/pam_wsl_hello_$USER.pem /etc/pam_wsl_hello/public_keys/
 
 set +x
-echo_stage "[4/5] Creating uninstall.sh..."
+echo_stage "Creating uninstall.sh..."
 if [ ! -e "uninstall.sh" ] || prompt_yn "'uninstall.sh' already exists. Overwrite it? [Y/n]" "y" ; then
   cat > uninstall.sh << EOS
   echo -e "\e[31mNote: Please ensure that config files in /etc/pam.d/ are restored to as they were before WSL-Hello-sudo was installed\e[m"
@@ -134,6 +137,6 @@ else
 fi
 set -x
 set +x
-echo_stage "[5/5] Done!"
+echo_stage "Done!"
 echo "Installation is done! Configure your /etc/pam.d/sudo to make WSL-Hello-sudo effective."
 echo "If you want to uninstall WSL-Hello-sudo, run uninstall.sh"
