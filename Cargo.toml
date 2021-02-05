@@ -12,3 +12,6 @@ libc = "0.2.0"
 openssl = "0.10.29"
 toml = "0.4"
 uuid = { version = "0.5", features = ["v4"] }
+
+[profile.release]
+lto = true

@@ -7,6 +7,7 @@ all: build/pam_wsl_hello.so\
 
 build/pam_wsl_hello.so: build FORCE
 	cargo build --release
+	strip target/release/libpam_wsl_hello.so
 	cp ./target/release/libpam_wsl_hello.so build/pam_wsl_hello.so
 
 build/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe: build FORCE
