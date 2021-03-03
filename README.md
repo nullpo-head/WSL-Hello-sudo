@@ -91,7 +91,7 @@ To build "WSL Hello sudo", just run `make`.
 
 ```ShellSession
 $ git clone https://github.com/nullpo-head/WSL-Hello-sudo.git
-$ cd WSL-Hell-sudo
+$ cd WSL-Hello-sudo
 $ make
 ```
 It invokes `cargo` and `MSBuild.exe` properly.
