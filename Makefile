@@ -1,39 +1,55 @@
-RELEASE := release
 
-.PHONY: all clean cleanall cleanrelease install release
+.PHONY: all clean install
 
 all: build/pam_wsl_hello.so\
      build/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe\
      build/WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe
 
-build/pam_wsl_hello.so: | build
+build/pam_wsl_hello.so: build FORCE
 	cargo build --release
-	strip target/release/libpam_wsl_hello.so
 	cp ./target/release/libpam_wsl_hello.so build/pam_wsl_hello.so
 
-build/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe build/WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe: | build
-	$(MAKE) -C win_components all
-	cp -R win_components/build build/
+build/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe: build FORCE
+	@if ! command -v MSBuild.exe > /dev/null; then \
+	  echo "MSBuild.exe is not found in \$$PATH. Set the path to Visual Studio's MSBuild"; \
+	  exit 1; \
+	fi
+	cd ./win_components/WindowsHelloAuthenticator;\
+	MSBuild.exe "/t:Restore";\
+	MSBuild.exe "/t:Build" "/p:Configuration=Release"
+	mkdir -p build/WindowsHelloAuthenticator
+	cp ./win_components/WindowsHelloAuthenticator/WindowsHelloAuthenticator/bin/Release/* build/WindowsHelloAuthenticator/
 
+build/WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe: build FORCE
+	@if ! command -v MSBuild.exe > /dev/null; then \
+	  echo "MSBuild.exe is not found in \$$PATH. Set the path to Visual Studio's MSBuild"; \
+	  exit 1; \
+	fi
+	cd ./win_components/WindowsHelloKeyCredentialCreator;\
+	MSBuild.exe "/t:Restore";\
+	MSBuild.exe "/t:Build" "/p:Configuration=Release"
+	mkdir -p build/WindowsHelloKeyCredentialCreator
+	cp ./win_components/WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator/bin/Release/* build/WindowsHelloKeyCredentialCreator/
+
+FORCE:  ;
 build:
 	mkdir -p build
 
 clean:
 	cargo clean
-
-cleanall: clean
-	$(MAKE) -C win_components clean
-
-cleanrelease: cleanall
+	cd ./win_components/WindowsHelloKeyCredentialCreator;\
+	MSBuild.exe "/t:Clean" "/p:Configuration=Release"
+	cd ./win_components/WindowsHelloAuthenticator;\
+	MSBuild.exe "/t:Clean" "/p:Configuration=Release"
 	rm -rf build
-	rm -rf $(RELEASE)
-	rm $(RELEASE).tar.gz
+	rm -rf release
+	rm release.tar.gz
 
 install: all
 	./install.sh
 
 release: all
-	mkdir -p $(RELEASE)
-	cp -R build $(RELEASE)/
-	cp install.sh $(RELEASE)/
-	tar cvzf $(RELEASE).tar.gz $(RELEASE)
+	mkdir -p release
+	cp -R build release/
+	cp install.sh release/
+	tar cvzf release.tar.gz release
