@@ -1,3 +1,12 @@
+## [1.3.1](https://github.com/nullpo-head/WSL-Hello-sudo/compare/v1.3.0...v1.3.1) (2021-08-29)
+
+
+### Bug Fixes
+
+* **install:** Fix installation failure that occured because .exe files did not have the execution permissions. ([5788c93](https://github.com/nullpo-head/WSL-Hello-sudo/commit/5788c93f265201134d5afe719b607a715a12e07d))
+
+
+
 # [1.3.0](https://github.com/nullpo-head/WSL-Hello-sudo/compare/v1.2.0...v1.3.0) (2021-08-29)
 
 
