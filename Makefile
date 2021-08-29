@@ -40,3 +40,4 @@ release: all
 
 lint:
 	shellcheck install.sh
+	cargo clippy -- -D warnings
