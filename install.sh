@@ -12,14 +12,14 @@ prompt_yn () {
   elif [[ "$response" =~ ^([nN][oO]|[nN])+$ ]]; then
     false
   else
-    $(prompt_yn "$1" "$2")
+    prompt_yn "$1" "$2"
   fi
 }
 
 STEPS=6
 CURRENT_STEP=0
 echo_stage () {
-  let CURRENT_STEP=CURRENT_STEP+1
+  CURRENT_STEP=$(( "$CURRENT_STEP" + 1 ))
   echo -e "\e[32m[$CURRENT_STEP/$STEPS] $*\e[m"
 }
 
@@ -32,7 +32,7 @@ check_pam_directory () {
 }
 
 
-if [ `whoami` = "root" ]; then
+if [ "$(whoami)" = "root" ]; then
   echo "Please run this as normal user instead of root. Aborting."
   exit 1
 fi
@@ -47,9 +47,9 @@ MNT=/mnt/c
 
 if [ -f "/etc/wsl.conf" ]; then
   # Get value specified in the form of 'root = /some/path/'
-  WSL_CONF_ROOT="$(cat /etc/wsl.conf | sed -n "s/^[[:space:]]*root[[:space:]]*=\(.*\)/\1/p")"
+  WSL_CONF_ROOT="$( sed -n "s/^[[:space:]]*root[[:space:]]*=\(.*\)/\1/p" < /etc/wsl.conf )"
   # Trim path
-  WSL_CONF_ROOT="$(echo $WSL_CONF_ROOT | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  WSL_CONF_ROOT="$(echo "$WSL_CONF_ROOT" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   if [ -n "$WSL_CONF_ROOT" ]; then
     MNT="${WSL_CONF_ROOT}c"
   fi
@@ -58,14 +58,14 @@ fi
 if [[ ! -e "${MNT}" ]]; then
   echo "'$MNT' was not found. Please input the mount point of your C drive to invoke Windows commands."
   echo -n ": "
-  read MNT
+  read -r MNT
 fi
-WINUSER=`${MNT}/Windows/System32/cmd.exe /C "echo | set /p dummy=%username%"` # Hacky. Get Windows's user name without new line
+WINUSER=$("${MNT}/Windows/System32/cmd.exe" /C "echo | set /p dummy=%username%") # Hacky. Get Windows's user name without new line
 DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/pam_wsl_hello"
 echo "Input the install location for Windows Hello authentication components."
 echo "They are Windows .exe files and required to be in a valid Windows directory"
 echo -n "Default [${DEF_PAM_WSL_HELLO_WINPATH}] :" 
-read PAM_WSL_HELLO_WINPATH
+read -r PAM_WSL_HELLO_WINPATH
 if [ -z "$PAM_WSL_HELLO_WINPATH" ]; then
   PAM_WSL_HELLO_WINPATH=$DEF_PAM_WSL_HELLO_WINPATH
 fi
@@ -91,7 +91,7 @@ if ! check_pam_directory "${SECURITY_PATH}"; then
     echo "PAM module directory was not found in '${SECURITY_PATH}'."
     echo "Please input the path of the PAM module's directory."
     echo -n ": "
-    read SECURITY_PATH
+    read -r SECURITY_PATH
   done
 fi
 echo "Confirmed '${SECURITY_PATH}' as the PAM module directory."
@@ -142,14 +142,15 @@ if [ ! -e "/etc/pam_wsl_hello/config" ] || prompt_yn "'/etc/pam_wsl_hello/config
 else
   echo "Skipping creation of '/etc/pam_wsl_hello/config'..."
 fi
+set +x
 echo "Please authenticate yourself now to create a credential for '$USER' and '$WINUSER' pair."
 KEY_ALREADY_EXIST_ERR=170
 set -x
 pushd "$PAM_WSL_HELLO_WINPATH"
-WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe pam_wsl_hello_$USER|| test $? = $KEY_ALREADY_EXIST_ERR
+WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe "pam_wsl_hello_$USER" || test $? = $KEY_ALREADY_EXIST_ERR
 sudo mkdir -p /etc/pam_wsl_hello/public_keys
 popd
-sudo cp "$PAM_WSL_HELLO_WINPATH"/pam_wsl_hello_$USER.pem /etc/pam_wsl_hello/public_keys/
+sudo cp "$PAM_WSL_HELLO_WINPATH/pam_wsl_hello_$USER.pem" /etc/pam_wsl_hello/public_keys/
 
 set +x
 echo_stage "Creating uninstall.sh..."
