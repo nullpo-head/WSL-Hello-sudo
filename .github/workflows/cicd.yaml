@@ -106,7 +106,7 @@ jobs:
       - name: Create Release asset
         id: create_asset
         env:
-          release_name: WSL-Hello-sudo-${{ steps.changelog.outputs.tag }}
+          release_name: release
         run: |
           make -d release RELEASE="$release_name"
           echo "::set-output name=release_asset::$release_name.tar.gz"
