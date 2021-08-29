@@ -1,26 +1,21 @@
-
-use libc::{c_char, c_int};
-use std::ffi::{CStr, CString};
-use std::borrow::Cow;
-use std::ptr;
-use std::fs;
-use std::fs::{File, OpenOptions};
-use std::io;
-use std::io::SeekFrom;
-use std::io::prelude::*;
-use std::process::{Command, Stdio};
-use std::os::unix::io::{AsRawFd, FromRawFd};
-use std::fmt;
-use std::path::Path;
-use openssl;
 use bindings::*;
-use openssl::sign::Verifier;
-use openssl::pkey::PKey;
+use libc::{c_char, c_int};
+use openssl;
 use openssl::hash::MessageDigest;
+use openssl::pkey::PKey;
+use openssl::sign::Verifier;
+use std::borrow::Cow;
+use std::ffi::{CStr, CString};
+use std::fmt;
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, prelude::*, SeekFrom};
+use std::os::unix::io::{AsRawFd, FromRawFd};
+use std::path::Path;
+use std::process::{Command, Stdio};
+use std::ptr;
 use toml;
 use toml::Value;
 use uuid::Uuid;
-
 
 #[no_mangle]
 pub fn pam_sm_authenticate(
@@ -54,7 +49,7 @@ fn get_user(pamh: *mut pam_handle_t, prompt: Option<&str>) -> Result<Cow<str>, i
         Some(prompt_str) => {
             tmp_prompt_str = CString::new(prompt_str).unwrap();
             tmp_prompt_str.as_ptr()
-        },
+        }
         None => ptr::null(),
     };
     let err;
@@ -111,11 +106,9 @@ fn get_authenticator_path() -> Result<String, ConfigError> {
     let config_value = config.parse::<Value>()?;
     let authenticator_path = config_value
         .get("authenticator_path")
-        .ok_or(ConfigError::MissingField("authenticator_path".to_owned()))?
+        .ok_or_else(|| ConfigError::MissingField("authenticator_path".to_owned()))?
         .as_str()
-        .ok_or(ConfigError::InvalidValueType(
-            "authenticator_path".to_owned(),
-        ))?;
+        .ok_or_else(|| ConfigError::InvalidValueType("authenticator_path".to_owned()))?;
     Ok(authenticator_path.to_owned())
 }
 
@@ -127,9 +120,9 @@ fn get_win_mnt() -> Result<String, ConfigError> {
     let config_value = config.parse::<Value>()?;
     let win_mnt = config_value
         .get("win_mnt")
-        .ok_or(ConfigError::MissingField("win_mnt".to_owned()))?
+        .ok_or_else(|| ConfigError::MissingField("win_mnt".to_owned()))?
         .as_str()
-        .ok_or(ConfigError::InvalidValueType("win_mnt".to_owned()))?;
+        .ok_or_else(|| ConfigError::InvalidValueType("win_mnt".to_owned()))?;
     Ok(win_mnt.to_owned())
 }
 
@@ -140,7 +133,7 @@ enum HelloAuthenticationError {
     PublicKeyFileError(io::Error),
     Io(io::Error),
     InvalidPublicKey(openssl::error::ErrorStack),
-    OpenSSLError(openssl::error::ErrorStack),
+    OpenSslError(openssl::error::ErrorStack),
     AuthenticatorLaunchError(io::Error),
     AuthenticatorConnectionError(io::Error),
     AuthenticatorSignalled,
@@ -193,18 +186,18 @@ impl fmt::Display for HelloAuthenticationError {
 }
 
 fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthenticationError> {
-    let user_name = get_user(pamh, None).map_err(|e| HelloAuthenticationError::GetUserError(e))?;
+    let user_name = get_user(pamh, None).map_err(HelloAuthenticationError::GetUserError)?;
     let credential_key_name = format!("pam_wsl_hello_{}", user_name);
 
-    let mut hello_public_key_file =
-        File::open(format!(
-            "/etc/pam_wsl_hello/public_keys/{}.pem",
-            credential_key_name
-        )).map_err(|io| HelloAuthenticationError::PublicKeyFileError(io))?;
+    let mut hello_public_key_file = File::open(format!(
+        "/etc/pam_wsl_hello/public_keys/{}.pem",
+        credential_key_name
+    ))
+    .map_err(HelloAuthenticationError::PublicKeyFileError)?;
     let mut key_str = String::new();
     hello_public_key_file.read_to_string(&mut key_str)?;
     let hello_public_key = PKey::public_key_from_pem(key_str.as_bytes())
-        .map_err(|e| HelloAuthenticationError::InvalidPublicKey(e))?;
+        .map_err(HelloAuthenticationError::InvalidPublicKey)?;
 
     let challenge = format!("pam_wsl_hello:{}:{}", user_name, Uuid::new_v4());
 
@@ -229,11 +222,11 @@ fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthentic
             .stdin(challenge_tmpfile_in)
             .stdout(Stdio::piped())
             .spawn()
-            .map_err(|e| HelloAuthenticationError::AuthenticatorLaunchError(e))?;
+            .map_err(HelloAuthenticationError::AuthenticatorLaunchError)?;
 
-        auth_res = authenticator.wait_with_output().map_err(|e| {
-            HelloAuthenticationError::AuthenticatorConnectionError(e)
-        })?;
+        auth_res = authenticator
+            .wait_with_output()
+            .map_err(HelloAuthenticationError::AuthenticatorConnectionError)?;
     }
     fs::remove_file(challenge_tmpfile_path)?;
 
@@ -241,7 +234,8 @@ fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthentic
         Some(code) if code == 0 => { /* Success */ }
         Some(_) => {
             return Err(HelloAuthenticationError::HelloAuthenticationFail(
-                String::from_utf8(auth_res.stdout).unwrap_or("invalid utf8 output".to_string()),
+                String::from_utf8(auth_res.stdout)
+                    .unwrap_or_else(|_| "invalid utf8 output".to_string()),
             ))
         }
         None => return Err(HelloAuthenticationError::AuthenticatorSignalled),
@@ -251,11 +245,11 @@ fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthentic
     let mut verifier = Verifier::new(MessageDigest::sha256(), &hello_public_key).unwrap();
     verifier
         .update(challenge.as_bytes())
-        .map_err(|e| HelloAuthenticationError::OpenSSLError(e))?;
+        .map_err(HelloAuthenticationError::OpenSslError)?;
 
     match verifier
         .verify(&signature)
-        .map_err(|e| HelloAuthenticationError::OpenSSLError(e))?
+        .map_err(HelloAuthenticationError::OpenSslError)?
     {
         true => Ok(PAM_SUCCESS),
         false => Err(HelloAuthenticationError::SignAuthenticationFail),
