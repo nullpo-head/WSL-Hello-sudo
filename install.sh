@@ -79,6 +79,7 @@ set +x
 echo_stage "Installing Windows components of WSL-Hello-sudo..."
 set -x
 cp -r build/{WindowsHelloAuthenticator,WindowsHelloKeyCredentialCreator} "$PAM_WSL_HELLO_WINPATH/"
+find "$PAM_WSL_HELLO_WINPATH/" -name "*.exe" -print0 | xargs -0 chmod +x
 
 set +x
 echo_stage "Installing PAM module to the Linux system..."
