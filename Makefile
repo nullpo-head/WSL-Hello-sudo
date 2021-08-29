@@ -13,7 +13,7 @@ build/pam_wsl_hello.so: | build
 
 build/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe build/WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe: | build
 	$(MAKE) -C win_components all
-	cp -R win_components/build build/
+	cp -R win_components/build/* build/
 
 build:
 	mkdir -p build
