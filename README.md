@@ -111,7 +111,7 @@ It invokes `cargo` and `MSBuild.exe` properly.
 ## Internals
 
 Windows Hello maintains RSA key-pairs for each Windows user in its TPM hardware, and tells success of authentication by signing given contents by the private key.
-To utilize its API, "WSL Hello sudo" contains small Windows CLI apps that return public key and singned signature of given content.
+To utilize its API, "WSL Hello sudo" contains small Windows CLI apps that return public key and signed signature of given content.
 On the other hand, the PAM module of "WSL Hello sudo" remembers the public keys of each Windows user who corresponds to each Linux user.
 So, the PAM module authenticates the given Linux user by the following process.
 
