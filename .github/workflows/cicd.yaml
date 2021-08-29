@@ -16,6 +16,17 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  lint:
+    name: "Run linters"
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run linters
+        run: make lint
+
   build-pam-module:
     name: "Build PAM module"
 

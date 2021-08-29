@@ -1,6 +1,6 @@
 RELEASE := release
 
-.PHONY: all clean cleanall cleanrelease install release
+.PHONY: all clean cleanall cleanrelease install release lint
 
 all: build/pam_wsl_hello.so\
      build/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe\
@@ -37,3 +37,6 @@ release: all
 	cp -R build $(RELEASE)/
 	cp install.sh pam-config $(RELEASE)/
 	tar cvzf $(RELEASE).tar.gz $(RELEASE)
+
+lint:
+	shellcheck install.sh
