@@ -49,8 +49,12 @@ pub fn pam_sm_authenticate(
 
 fn get_user(pamh: *mut pam_handle_t, prompt: Option<&str>) -> Result<Cow<str>, i32> {
     let mut c_user: *const c_char = ptr::null();
+    let tmp_prompt_str: CString;
     let c_prompt = match prompt {
-        Some(prompt_str) => CString::new(prompt_str).unwrap().as_ptr(),
+        Some(prompt_str) => {
+            tmp_prompt_str = CString::new(prompt_str).unwrap();
+            tmp_prompt_str.as_ptr()
+        },
         None => ptr::null(),
     };
     let err;
