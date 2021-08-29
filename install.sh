@@ -41,8 +41,19 @@ if [ ! -e build/pam_wsl_hello.so ] || \
 fi
 
 MNT=/mnt/c
+
+if [ -f "/etc/wsl.conf" ]; then
+  # Get value specified in the form of 'root = /some/path/'
+  WSL_CONF_ROOT="$(cat /etc/wsl.conf | sed -n "s/^[[:space:]]*root[[:space:]]*=\(.*\)/\1/p")"
+  # Trim path
+  WSL_CONF_ROOT="$(echo $WSL_CONF_ROOT | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  if [ -n "$WSL_CONF_ROOT" ]; then
+    MNT="${WSL_CONF_ROOT}c"
+  fi
+fi
+
 if [[ ! -e "${MNT}" ]]; then
-  echo "'/mnt/c' was not found. Please input the mount point of your C drive to invoke Windows commands."
+  echo "'$MNT' was not found. Please input the mount point of your C drive to invoke Windows commands."
   echo -n ": "
   read MNT
 fi
@@ -106,6 +117,7 @@ if [ ! -e "/etc/pam_wsl_hello/config" ] || prompt_yn "'/etc/pam_wsl_hello/config
   set -x
   sudo touch /etc/pam_wsl_hello/config
   sudo echo "authenticator_path = \"$PAM_WSL_HELLO_WINPATH/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe\"" | sudo tee /etc/pam_wsl_hello/config
+  sudo echo "win_mnt = \"$MNT\"" | sudo tee -a /etc/pam_wsl_hello/config
 else
   echo "Skipping creation of '/etc/pam_wsl_hello/config'..."
 fi
