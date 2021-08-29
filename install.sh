@@ -16,8 +16,11 @@ prompt_yn () {
   fi
 }
 
+STEPS=6
+CURRENT_STEP=0
 echo_stage () {
-  echo -e "\e[32m$*\e[m"
+  let CURRENT_STEP=CURRENT_STEP+1
+  echo -e "\e[32m[$CURRENT_STEP/$STEPS] $*\e[m"
 }
 
 check_pam_directory () {
@@ -73,12 +76,12 @@ if [ ! -e "$PAM_WSL_HELLO_WINPATH" ]; then
   fi
 fi
 set +x
-echo_stage "[1/5] Installing Windows components of WSL-Hello-sudo..."
+echo_stage "Installing Windows components of WSL-Hello-sudo..."
 set -x
 cp -r build/{WindowsHelloAuthenticator,WindowsHelloKeyCredentialCreator} "$PAM_WSL_HELLO_WINPATH/"
 
 set +x
-echo_stage "[2/5] Installing PAM module to the Linux system..."
+echo_stage "Installing PAM module to the Linux system..."
 SECURITY_PATH="/lib/x86_64-linux-gnu/security" 
 if ! check_pam_directory "${SECURITY_PATH}"; then
   echo "PAM directory was not found in '/lib/x86_64-linux-gnu/security/'. It looks like you're not running Ubuntu nor Debian."
@@ -109,7 +112,25 @@ sudo chown root:root "${SECURITY_PATH}/pam_wsl_hello.so"
 sudo chmod 644 "${SECURITY_PATH}/pam_wsl_hello.so"
 
 set +x
-echo_stage "[3/5] Creating the config files of WSL-Hello-sudo..."
+echo_stage "Creating pam-config..."
+PAM_CONFIG_INSTALLED=no
+PAM_CONFIGS_PATH=/usr/share/pam-configs
+PAM_CONFIG_NAME=wsl-hello
+if [ -d "${PAM_CONFIGS_PATH}" ]; then
+  PAM_CONFIG=${PAM_CONFIGS_PATH}/${PAM_CONFIG_NAME}
+  if [ ! -e "${PAM_CONFIG}" ] || prompt_yn "'${PAM_CONFIG}' already exists. Overwrite it? [Y/n]" "y"; then
+    set -x
+    sudo cp pam-config "${PAM_CONFIG}"
+    set +x
+    PAM_CONFIG_INSTALLED=yes
+  else
+    echo "Skipping creation of '${PAM_CONFIG}'..."
+  fi
+else
+  echo "PAM config directory was not found in '${PAM_CONFIGS_PATH}'. It looks like you're not running Ubuntu nor Debian. You will have to configure pam manually."
+fi
+
+echo_stage "Creating the config files of WSL-Hello-sudo..."
 set -x
 sudo mkdir -p /etc/pam_wsl_hello/
 set +x
@@ -131,13 +152,17 @@ popd
 sudo cp "$PAM_WSL_HELLO_WINPATH"/pam_wsl_hello_$USER.pem /etc/pam_wsl_hello/public_keys/
 
 set +x
-echo_stage "[4/5] Creating uninstall.sh..."
+echo_stage "Creating uninstall.sh..."
 if [ ! -e "uninstall.sh" ] || prompt_yn "'uninstall.sh' already exists. Overwrite it? [Y/n]" "y" ; then
   cat > uninstall.sh << EOS
   echo -e "\e[31mNote: Please ensure that config files in /etc/pam.d/ are restored to as they were before WSL-Hello-sudo was installed\e[m"
   set -x
   sudo rm -rf /etc/pam_wsl_hello
   sudo rm "${SECURITY_PATH}/pam_wsl_hello.so"
+  if [ -e "${PAM_CONFIG}" ]; then
+    sudo pam-auth-update --remove "${PAM_CONFIG_NAME}"
+    sudo rm "${PAM_CONFIG}"
+  fi
   rm -rf ${PAM_WSL_HELLO_WINPATH}
 EOS
   chmod +x uninstall.sh
@@ -146,6 +171,16 @@ else
 fi
 set -x
 set +x
-echo_stage "[5/5] Done!"
-echo "Installation is done! Configure your /etc/pam.d/sudo to make WSL-Hello-sudo effective."
+echo_stage "Done!"
+echo -n "Installation is done! "
+if [ "$PAM_CONFIG_INSTALLED" = "yes" ]; then
+  if prompt_yn "Do you want to enable the pam module now? [y/N]" "n"; then
+    set -x
+    sudo pam-auth-update --enable "${PAM_CONFIG_NAME}"
+    set +x
+  fi
+  echo "You can call 'sudo pam-auth-update' to enable/disable WSL Hello authentication."
+else
+  echo "Configure your /etc/pam.d/sudo to make WSL-Hello-sudo effective."
+fi
 echo "If you want to uninstall WSL-Hello-sudo, run uninstall.sh"
