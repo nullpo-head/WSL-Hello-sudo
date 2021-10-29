@@ -9,7 +9,6 @@ use std::ffi::{CStr, CString};
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, prelude::*, SeekFrom};
-use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::ptr;
@@ -213,7 +212,8 @@ fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthentic
             .open(challenge_tmpfile_path)?;
         challenge_tmpfile.write_all(challenge.as_bytes())?;
         challenge_tmpfile.seek(SeekFrom::Start(0))?;
-        let challenge_tmpfile_in = unsafe { Stdio::from_raw_fd(challenge_tmpfile.as_raw_fd()) };
+
+        let challenge_tmpfile_in = Stdio::from(challenge_tmpfile);
 
         let authenticator_path = get_authenticator_path()?;
         let authenticator = Command::new(&authenticator_path)
