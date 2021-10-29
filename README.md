@@ -5,7 +5,7 @@ biometric login of [Windows Hello](https://www.microsoft.com/en-us/windows/windo
 This PAM module allows you to authenticate `sudo` via face recognition, fingerprint authentication, and of couse machine-local PIN.
 It runs in both WSL and WSL 2.
 
-The Linux PAM module is written in Rust, and Windows CLI apps are written in C#.  
+Both the Linux PAM module and Windows CLI app are written in Rust.
 Please use it at your own risk. There is no warranty.
 
 ![demo](https://github.com/nullpo-head/WSL-Hello-sudo/blob/master/demo.gif)
@@ -31,7 +31,7 @@ $ ./install.sh
 Although you don't have to care about the detailed installation process,  
 `install.sh` does following things.
 
-1. Copy small Windows CLI apps that launch Windows Hello to `C:\Users\your_account\pam_wsl_hello` (default location)  
+1. Copy a small Windows CLI app that launches Windows Hello to `C:\Users\your_account\pam_wsl_hello` (default location)  
 2. Install a PAM module to your WSL system.
 3. Create config files in `/etc/pam_wsl_hello/`
 4. Create a pam-configs entry in `/usr/share/pam-configs/` for automatic PAM configuration
@@ -90,23 +90,16 @@ auth       sufficient pam_wsl_hello.so
 
 ## Build
 
-The Linux PAM module of "WSL Hello sudo" is written in Rust, and the Windows CLI apps are written in C#.  
-So, `cargo` and Visual Studio are required to build it.
+Both the Linux PAM module and the Windows CLI apps of "WSL Hello sudo" are written in Rust.
+So, only `cargo` is required to build it.
 
-Before building "WSL Hello sudo", add the path to `MSBuild.exe` to `PATH` environment variable of __`bash` on WSL__, not Windows.  
-If you build Windows CLI apps with your Visual Studio GUI, you can ignore that.
-In my environment, MSBuild lives in `/mnt/c/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/`
-
-To build "WSL Hello sudo", just run `make`.
+To build "WSL Hello sudo", make sure you're in WSL and then just run `make`.
 
 ```ShellSession
 $ git clone https://github.com/nullpo-head/WSL-Hello-sudo.git
 $ cd WSL-Hello-sudo
 $ make
 ```
-It invokes `cargo` and `MSBuild.exe` properly.
-
-> Whether you're using `bash` or Windows, the repository must be in the Windows filesystem, otherwise `MSBuild.exe` won't work.
 
 ## Internals
 
@@ -121,4 +114,3 @@ So, the PAM module authenticates the given Linux user by the following process.
 3. Windows Hello makes a signature of the given input by the private key of the current Windows user
 4. The companion Windows app returns the signature
 5. The PAM module verifies the signature by the public key of the Windows user who corresponds to the given Linux user.
-

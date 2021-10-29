@@ -37,8 +37,7 @@ if [ "$(whoami)" = "root" ]; then
   exit 1
 fi
 if [ ! -e build/pam_wsl_hello.so ] || \
-  [ ! -e build/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe ] || \
-  [ ! -e build/WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe ]; then
+  [ ! -e build/WindowsHelloBridge.exe ]; then
     echo "No built binary was found. Build first before installing."
     exit 1
 fi
@@ -62,8 +61,8 @@ if [[ ! -e "${MNT}" ]]; then
 fi
 WINUSER=$("${MNT}/Windows/System32/cmd.exe" /C "echo | set /p dummy=%username%") # Hacky. Get Windows's user name without new line
 DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/pam_wsl_hello"
-echo "Input the install location for Windows Hello authentication components."
-echo "They are Windows .exe files and required to be in a valid Windows directory"
+echo "Input the install location for Windows Hello authentication component."
+echo "It is a Windows .exe file and required to be in a valid Windows directory"
 echo -n "Default [${DEF_PAM_WSL_HELLO_WINPATH}] :" 
 read -r PAM_WSL_HELLO_WINPATH
 if [ -z "$PAM_WSL_HELLO_WINPATH" ]; then
@@ -76,10 +75,10 @@ if [ ! -e "$PAM_WSL_HELLO_WINPATH" ]; then
   fi
 fi
 set +x
-echo_stage "Installing Windows components of WSL-Hello-sudo..."
+echo_stage "Installing Windows component of WSL-Hello-sudo..."
 set -x
-cp -r build/{WindowsHelloAuthenticator,WindowsHelloKeyCredentialCreator} "$PAM_WSL_HELLO_WINPATH/"
-find "$PAM_WSL_HELLO_WINPATH/" -name "*.exe" -print0 | xargs -0 chmod +x
+cp build/WindowsHelloBridge.exe "$PAM_WSL_HELLO_WINPATH/"
+chmod +x "$PAM_WSL_HELLO_WINPATH/WindowsHelloBridge.exe"
 
 set +x
 echo_stage "Installing PAM module to the Linux system..."
@@ -138,17 +137,17 @@ set +x
 if [ ! -e "/etc/pam_wsl_hello/config" ] || prompt_yn "'/etc/pam_wsl_hello/config' already exists. Overwrite it? [y/N]" "n" ; then
   set -x
   sudo touch /etc/pam_wsl_hello/config
-  sudo echo "authenticator_path = \"$PAM_WSL_HELLO_WINPATH/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe\"" | sudo tee /etc/pam_wsl_hello/config
+  sudo echo "authenticator_path = \"$PAM_WSL_HELLO_WINPATH/WindowsHelloBridge.exe\"" | sudo tee /etc/pam_wsl_hello/config
   sudo echo "win_mnt = \"$MNT\"" | sudo tee -a /etc/pam_wsl_hello/config
 else
   echo "Skipping creation of '/etc/pam_wsl_hello/config'..."
 fi
 set +x
 echo "Please authenticate yourself now to create a credential for '$USER' and '$WINUSER' pair."
-KEY_ALREADY_EXIST_ERR=170
+KEY_ALREADY_EXIST_ERR=171
 set -x
 pushd "$PAM_WSL_HELLO_WINPATH"
-WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe "pam_wsl_hello_$USER" || test $? = $KEY_ALREADY_EXIST_ERR
+./WindowsHelloBridge.exe creator "pam_wsl_hello_$USER" || test $? = $KEY_ALREADY_EXIST_ERR
 sudo mkdir -p /etc/pam_wsl_hello/public_keys
 popd
 sudo cp "$PAM_WSL_HELLO_WINPATH/pam_wsl_hello_$USER.pem" /etc/pam_wsl_hello/public_keys/
