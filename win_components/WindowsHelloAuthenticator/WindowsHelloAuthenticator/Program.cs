@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.UI.Popups;
 using Windows.Security.Credentials;
 using Windows.Security.Cryptography;
 using Windows.Security.Cryptography.Core;
+using HWND = System.IntPtr;
 
 namespace WindowsHelloAuthenticator
 {
@@ -52,6 +55,28 @@ namespace WindowsHelloAuthenticator
                     return "Unkwon internal error.";
             }
         }
+        
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern HWND FindWindow(string lpClassName, string lpWindowName);
+        
+        [DllImport("User32.dll", SetLastError = true)]
+        static extern bool SetForegroundWindow(HWND hWnd);
+        
+        
+        static async Task<bool> FocusHelloWindow(CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            HWND hwnd = FindWindow("Credential Dialog Xaml Host", null);
+
+            while ((int)hwnd == 0)
+            {
+                await Task.Delay(500);
+                hwnd = FindWindow("Credential Dialog Xaml Host", null);
+                token.ThrowIfCancellationRequested();
+            }
+
+            return SetForegroundWindow(hwnd);
+        }
 
         static async Task<(int err, byte[] sig)> VerifyUser(string key_name, string contentToSign)
         {
@@ -68,7 +93,14 @@ namespace WindowsHelloAuthenticator
             }
 
             var buf = CryptographicBuffer.ConvertStringToBinary(contentToSign, BinaryStringEncoding.Utf8);
+            
+            var tokenSource = new CancellationTokenSource();
+            FocusHelloWindow(tokenSource.Token);
+            
             var signRes = await key.Credential.RequestSignAsync(buf);
+            
+            tokenSource.Cancel();
+            
             if (signRes.Status != KeyCredentialStatus.Success)
             {
                 return (CredentialStatusToExitCode(key.Status), null);
