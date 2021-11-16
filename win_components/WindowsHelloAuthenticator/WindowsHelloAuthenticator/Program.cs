@@ -95,7 +95,7 @@ namespace WindowsHelloAuthenticator
             var buf = CryptographicBuffer.ConvertStringToBinary(contentToSign, BinaryStringEncoding.Utf8);
             
             var tokenSource = new CancellationTokenSource();
-            FocusHelloWindow(tokenSource.Token);
+            _ = FocusHelloWindow(tokenSource.Token);
             
             var signRes = await key.Credential.RequestSignAsync(buf);
             
