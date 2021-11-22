@@ -1,3 +1,12 @@
+## [1.3.2](https://github.com/nullpo-head/WSL-Hello-sudo/compare/v1.3.1...v1.3.2) (2021-11-22)
+
+
+### Bug Fixes
+
+* quote hello_winpath in uninstall.sh ([#28](https://github.com/nullpo-head/WSL-Hello-sudo/issues/28)) ([bd7e009](https://github.com/nullpo-head/WSL-Hello-sudo/commit/bd7e009beb15d7248c590e521eed3ecbaec16515))
+
+
+
 ## [1.3.1](https://github.com/nullpo-head/WSL-Hello-sudo/compare/v1.3.0...v1.3.1) (2021-08-29)
 
 
