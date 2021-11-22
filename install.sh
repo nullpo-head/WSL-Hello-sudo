@@ -165,7 +165,7 @@ if [ ! -e "uninstall.sh" ] || prompt_yn "'uninstall.sh' already exists. Overwrit
     sudo pam-auth-update --remove "${PAM_CONFIG_NAME}"
     sudo rm "${PAM_CONFIG}"
   fi
-  rm -rf ${PAM_WSL_HELLO_WINPATH}
+  rm -rf "${PAM_WSL_HELLO_WINPATH}"
 EOS
   chmod +x uninstall.sh
 else
