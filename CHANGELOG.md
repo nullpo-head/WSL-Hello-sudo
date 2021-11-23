@@ -1,3 +1,12 @@
+# [1.4.0](https://github.com/nullpo-head/WSL-Hello-sudo/compare/v1.3.2...v1.4.0) (2021-11-23)
+
+
+### Features
+
+* move hello to foreground once window exists ([#27](https://github.com/nullpo-head/WSL-Hello-sudo/issues/27)) ([b0b9f54](https://github.com/nullpo-head/WSL-Hello-sudo/commit/b0b9f543fdef61dc3cb77bb0fea523afcb62fa65))
+
+
+
 ## [1.3.2](https://github.com/nullpo-head/WSL-Hello-sudo/compare/v1.3.1...v1.3.2) (2021-11-22)
 
 
