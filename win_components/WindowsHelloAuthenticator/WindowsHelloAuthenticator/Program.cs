@@ -22,7 +22,7 @@ namespace WindowsHelloAuthenticator
         public const byte ERR_VERIFY_CREDENTIAL_EXISTS = 171;
         public const byte ERR_VERIFY_CREDENTIAL_NOT_FOUND = 172;
         public const byte ERR_VERIFY_DEVICE_IS_LOCKED = 173;
-        public const byte ERR_VERIFY_UNKNOWN_ERR = 175;         // Skip 174 because the number should correspond to KeyCredentialStatus.Success if exists 
+        public const byte ERR_VERIFY_UNKNOWN_ERR = 175;         // Skip 174 because the number should correspond to KeyCredentialStatus.Success if exists
         public const byte ERR_VERIFY_USER_CANCELLED = 176;
         public const byte ERR_VERIFY_USER_PREFS_PASSWD = 177;
 
@@ -55,27 +55,59 @@ namespace WindowsHelloAuthenticator
                     return "Unkwon internal error.";
             }
         }
-        
+
         [DllImport("user32.dll", SetLastError = true)]
         static extern HWND FindWindow(string lpClassName, string lpWindowName);
-        
+
         [DllImport("User32.dll", SetLastError = true)]
         static extern bool SetForegroundWindow(HWND hWnd);
-        
-        
+
+        [DllImport("User32.dll", SetLastError = true)]
+        static extern bool ShowWindowAsync(HWND hWnd, int nCmdShow);
+        public const int SW_SHOWMINIMIZED = 2;
+        public const int SW_SHOW = 5;
+        public const int SW_RESTORE = 9;
+        public const int SW_SHOWDEFAULT = 10;
+
+
         static async Task<bool> FocusHelloWindow(CancellationToken token)
         {
             token.ThrowIfCancellationRequested();
+            Console.WriteLine("[wsl-hello] Searching for window...");
             HWND hwnd = FindWindow("Credential Dialog Xaml Host", null);
 
             while ((int)hwnd == 0)
             {
                 await Task.Delay(500);
+                Console.WriteLine("[wsl-hello] Still searching...");
                 hwnd = FindWindow("Credential Dialog Xaml Host", null);
                 token.ThrowIfCancellationRequested();
             }
 
-            return SetForegroundWindow(hwnd);
+            Console.WriteLine($"[wsl-hello] Window found, hWnd: {hwnd}");
+
+            Console.WriteLine("[wsl-hello] Attempting to focus using SetForegroundWindow...");
+            var success = SetForegroundWindow(hwnd);
+            Console.WriteLine($"[wsl-hello] SetForegroundWindow {(success ? "successful" : "unsuccessful")}.");
+
+            if (success) return true;
+
+            Console.WriteLine("[wsl-hello] Attempting to focus using ShowWindowAsync...");
+            ShowWindowAsync(hwnd, SW_SHOWMINIMIZED);
+
+            Console.WriteLine("[wsl-hello] Attempting SW_SHOWRESTORE...");
+            ShowWindowAsync(hwnd, SW_RESTORE);
+
+            await Task.Delay(2000);
+            Console.WriteLine("[wsl-hello] Attempting SW_SHOWDEFAULT...");
+            ShowWindowAsync(hwnd, SW_SHOWDEFAULT);
+
+            await Task.Delay(2000);
+            Console.WriteLine("[wsl-hello] Attempting SW_SHOW...");
+            ShowWindowAsync(hwnd, SW_SHOW);
+
+            return true;
+
         }
 
         static async Task<(int err, byte[] sig)> VerifyUser(string key_name, string contentToSign)
@@ -93,14 +125,14 @@ namespace WindowsHelloAuthenticator
             }
 
             var buf = CryptographicBuffer.ConvertStringToBinary(contentToSign, BinaryStringEncoding.Utf8);
-            
+
             var tokenSource = new CancellationTokenSource();
             _ = FocusHelloWindow(tokenSource.Token);
-            
+
             var signRes = await key.Credential.RequestSignAsync(buf);
-            
+
             tokenSource.Cancel();
-            
+
             if (signRes.Status != KeyCredentialStatus.Success)
             {
                 return (CredentialStatusToExitCode(key.Status), null);
