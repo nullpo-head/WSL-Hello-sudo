@@ -158,7 +158,7 @@ if [ ! -e "$PAM_CONFIG_FILENAME" ] || prompt_yn "'$PAM_CONFIG_FILENAME' already 
   sudo echo "win_mnt = \"$MNT\"" | sudo tee -a /etc/pam_wsl_hello/config
 elif grep -q "WindowsHelloAuthenticator" "$PAM_CONFIG_FILENAME" ; then
   echo "Migrating PAM config to v2.0"
-  sudo sed -i "1s;.*;$AUTHENTICATOR_PATH;" "$PAM_CONFIG_FILENAME"
+  sudo sed -i "1s;authenticator_path.*;$AUTHENTICATOR_PATH;" "$PAM_CONFIG_FILENAME"
 else
   echo "Skipping creation of '/etc/pam_wsl_hello/config'..."
 fi
