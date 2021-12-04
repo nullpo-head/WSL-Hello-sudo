@@ -37,8 +37,7 @@ if [ "$(whoami)" = "root" ]; then
   exit 1
 fi
 if [ ! -e build/pam_wsl_hello.so ] || \
-  [ ! -e build/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe ] || \
-  [ ! -e build/WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe ]; then
+  [ ! -e build/WindowsHelloBridge.exe ]; then
     echo "No built binary was found. Build first before installing."
     exit 1
 fi
@@ -60,26 +59,40 @@ if [[ ! -e "${MNT}" ]]; then
   echo -n ": "
   read -r MNT
 fi
+
 WINUSER=$("${MNT}/Windows/System32/cmd.exe" /C "echo | set /p dummy=%username%") # Hacky. Get Windows's user name without new line
-DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/pam_wsl_hello"
-echo "Input the install location for Windows Hello authentication components."
-echo "They are Windows .exe files and required to be in a valid Windows directory"
+DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/AppData/Local/Programs/wsl-hello-sudo"
+OLD_DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/pam_wsl_hello"
+
+echo "Input the install location for Windows Hello authentication component."
+echo "It is a Windows .exe file and required to be in a valid Windows directory"
 echo -n "Default [${DEF_PAM_WSL_HELLO_WINPATH}] :" 
 read -r PAM_WSL_HELLO_WINPATH
+
 if [ -z "$PAM_WSL_HELLO_WINPATH" ]; then
   PAM_WSL_HELLO_WINPATH=$DEF_PAM_WSL_HELLO_WINPATH
 fi
+
 if [ ! -e "$PAM_WSL_HELLO_WINPATH" ]; then
   if prompt_yn "'$PAM_WSL_HELLO_WINPATH' does not exist. Create it? [Y/n]" "y"; then
     set -x
     mkdir -p "$PAM_WSL_HELLO_WINPATH"
   fi
 fi
+
+MAYBE_OLD_KEY_PATH="$OLD_DEF_PAM_WSL_HELLO_WINPATH/pam_wsl_hello_$USER.pem"
+KEY_PATH="$PAM_WSL_HELLO_WINPATH/pam_wsl_hello_$USER.pem"
+if [ -f "$MAYBE_OLD_KEY_PATH" ]; then
+  echo "Migrating existing key identity"
+  mv "$MAYBE_OLD_KEY_PATH" "$KEY_PATH"
+  rm -r "$OLD_DEF_PAM_WSL_HELLO_WINPATH"
+fi
+
 set +x
-echo_stage "Installing Windows components of WSL-Hello-sudo..."
+echo_stage "Installing Windows component of WSL-Hello-sudo..."
 set -x
-cp -r build/{WindowsHelloAuthenticator,WindowsHelloKeyCredentialCreator} "$PAM_WSL_HELLO_WINPATH/"
-find "$PAM_WSL_HELLO_WINPATH/" -name "*.exe" -print0 | xargs -0 chmod +x
+cp build/WindowsHelloBridge.exe "$PAM_WSL_HELLO_WINPATH/"
+chmod +x "$PAM_WSL_HELLO_WINPATH/WindowsHelloBridge.exe"
 
 set +x
 echo_stage "Installing PAM module to the Linux system..."
@@ -134,24 +147,30 @@ fi
 echo_stage "Creating the config files of WSL-Hello-sudo..."
 set -x
 sudo mkdir -p /etc/pam_wsl_hello/
+PAM_CONFIG_FILENAME="/etc/pam_wsl_hello/config"
+AUTHENTICATOR_PATH="authenticator_path = \"$PAM_WSL_HELLO_WINPATH/WindowsHelloBridge.exe\""
+
 set +x
-if [ ! -e "/etc/pam_wsl_hello/config" ] || prompt_yn "'/etc/pam_wsl_hello/config' already exists. Overwrite it? [y/N]" "n" ; then
+if [ ! -e "$PAM_CONFIG_FILENAME" ] || prompt_yn "'$PAM_CONFIG_FILENAME' already exists. Overwrite it? [y/N]" "n" ; then
   set -x
   sudo touch /etc/pam_wsl_hello/config
-  sudo echo "authenticator_path = \"$PAM_WSL_HELLO_WINPATH/WindowsHelloAuthenticator/WindowsHelloAuthenticator.exe\"" | sudo tee /etc/pam_wsl_hello/config
+  sudo echo "$AUTHENTICATOR_PATH" | sudo tee "$PAM_CONFIG_FILENAME"
   sudo echo "win_mnt = \"$MNT\"" | sudo tee -a /etc/pam_wsl_hello/config
+elif grep -q "WindowsHelloAuthenticator" "$PAM_CONFIG_FILENAME" ; then
+  echo "Migrating PAM config to v2.0"
+  sudo sed -i "1s;authenticator_path.*;$AUTHENTICATOR_PATH;" "$PAM_CONFIG_FILENAME"
 else
   echo "Skipping creation of '/etc/pam_wsl_hello/config'..."
 fi
 set +x
 echo "Please authenticate yourself now to create a credential for '$USER' and '$WINUSER' pair."
-KEY_ALREADY_EXIST_ERR=170
+KEY_ALREADY_EXIST_ERR=171
 set -x
 pushd "$PAM_WSL_HELLO_WINPATH"
-WindowsHelloKeyCredentialCreator/WindowsHelloKeyCredentialCreator.exe "pam_wsl_hello_$USER" || test $? = $KEY_ALREADY_EXIST_ERR
+./WindowsHelloBridge.exe creator "pam_wsl_hello_$USER" || test $? = $KEY_ALREADY_EXIST_ERR
 sudo mkdir -p /etc/pam_wsl_hello/public_keys
 popd
-sudo cp "$PAM_WSL_HELLO_WINPATH/pam_wsl_hello_$USER.pem" /etc/pam_wsl_hello/public_keys/
+sudo cp "$KEY_PATH" /etc/pam_wsl_hello/public_keys/
 
 set +x
 echo_stage "Creating uninstall.sh..."

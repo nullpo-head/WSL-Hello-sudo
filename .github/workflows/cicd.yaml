@@ -58,26 +58,22 @@ jobs:
           path: build/pam_wsl_hello.so
           if-no-files-found: error
 
-  build-windows-binaries:
-    name: "Build Windows binaries"
+  build-windows-binary:
+    name: "Build Windows binary"
 
     runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v2
 
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v1.0.2
-
       - name: Build
-        run: make clean all
-        working-directory: win_components
+        run: make clean build/WindowsHelloBridge.exe
 
       - uses: actions/upload-artifact@v2
         name: Upload artifacts
         with:
-          name: "Windows Binaries"
-          path: win_components/build/
+          name: "Windows Binary"
+          path: build/WindowsHelloBridge.exe
           if-no-files-found: error
 
   release:
@@ -85,14 +81,14 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    needs: [build-pam-module, build-windows-binaries]
+    needs: [build-pam-module, build-windows-binary]
 
     steps:
       - uses: actions/checkout@v2
 
       - uses: actions/download-artifact@v2
         with:
-          name: "Windows Binaries"
+          name: "Windows Binary"
           path: build
 
       - uses: actions/download-artifact@v2
@@ -106,7 +102,7 @@ jobs:
         uses: TriPSs/conventional-changelog-action@v3
         with:
           github-token: ${{ secrets.github_token }}
-          version-file: Cargo.toml
+          version-file: ./wsl_hello_pam/Cargo.toml,./win_hello_bridge/Cargo.toml
           version-path: package.version
           skip-on-empty: false
           git-user-name: "github-actions[bot]"

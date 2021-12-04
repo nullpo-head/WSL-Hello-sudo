@@ -7,8 +7,8 @@ extern crate openssl;
 extern crate toml;
 extern crate uuid;
 
-pub mod bindings;
 pub mod auth;
+pub mod bindings;
 
 use bindings::*;
 

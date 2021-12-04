@@ -1,17 +1,9 @@
-[package]
-name = "wsl_hello_pam"
-version = "1.4.0"
-authors = ["Takaya Saeki <abc.tkys+pub@gmail.com>"]
+[workspace]
 
-[lib]
-name = "pam_wsl_hello"
-crate-type = ["dylib"]
-
-[dependencies]
-libc = "0.2.0"
-openssl = "0.10.29"
-toml = "0.4"
-uuid = { version = "0.5", features = ["v4"] }
+members = [
+    "win_hello_bridge",
+    "wsl_hello_pam",
+]
 
 [profile.release]
 lto = true
