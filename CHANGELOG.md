@@ -1,3 +1,19 @@
+# [2.0.0](https://github.com/nullpo-head/WSL-Hello-sudo/compare/v1.4.0...v2.0.0) (2021-12-04)
+
+
+### Features
+
+* Rewrite Windows components in Rust ([#26](https://github.com/nullpo-head/WSL-Hello-sudo/issues/26)) ([d87ad12](https://github.com/nullpo-head/WSL-Hello-sudo/commit/d87ad1238e0f64e907f929b84f2bfcaec607e436))
+
+
+### BREAKING CHANGES
+
+* The file location and interface of the Windows component are updated, though it was not intended to be used by end users.
+
+Co-authored-by: Takaya Saeki <abc.tkys+pub@gmail.com>
+
+
+
 # [1.4.0](https://github.com/nullpo-head/WSL-Hello-sudo/compare/v1.3.2...v1.4.0) (2021-11-23)
 
 
