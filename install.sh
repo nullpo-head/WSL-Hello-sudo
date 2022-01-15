@@ -91,8 +91,8 @@ fi
 set +x
 echo_stage "Installing Windows component of WSL-Hello-sudo..."
 set -x
+chmod +x build/WindowsHelloBridge.exe
 cp build/WindowsHelloBridge.exe "$PAM_WSL_HELLO_WINPATH/"
-chmod +x "$PAM_WSL_HELLO_WINPATH/WindowsHelloBridge.exe"
 
 set +x
 echo_stage "Installing PAM module to the Linux system..."
