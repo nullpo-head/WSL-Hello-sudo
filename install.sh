@@ -60,7 +60,10 @@ if [[ ! -e "${MNT}" ]]; then
   read -r MNT
 fi
 
-WINUSER=$("${MNT}/Windows/System32/cmd.exe" /C "echo | set /p dummy=%username%") # Hacky. Get Windows's user name without new line
+cp ${MNT}/Windows/System32/cmd.exe . # If Windows drive is mounted with proper permissions, we cannot neither execute cmd.exe nor change its permissions
+chmod +x cmd.exe
+
+WINUSER=$("./cmd.exe" /C "echo | set /p dummy=%username%") # Hacky. Get Windows's user name without new line
 DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/AppData/Local/Programs/wsl-hello-sudo"
 OLD_DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/pam_wsl_hello"
 
