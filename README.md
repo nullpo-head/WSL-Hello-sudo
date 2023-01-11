@@ -31,7 +31,7 @@ $ ./install.sh
 Although you don't have to care about the detailed installation process,  
 `install.sh` does following things.
 
-1. Copy a small Windows CLI app that launches Windows Hello to `C:\Users\your_account\pam_wsl_hello` (default location)  
+1. Copy a small Windows CLI app that launches Windows Hello to `C:\Users\your_account\AppData\Local\Programs\wsl-hello-sudo` (default location)  
 2. Install a PAM module to your WSL system.
 3. Create config files in `/etc/pam_wsl_hello/`
 4. Create a pam-configs entry in `/usr/share/pam-configs/` for automatic PAM configuration
