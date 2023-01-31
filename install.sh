@@ -96,7 +96,7 @@ chmod +x "$PAM_WSL_HELLO_WINPATH/WindowsHelloBridge.exe"
 
 set +x
 echo_stage "Installing PAM module to the Linux system..."
-SECURITY_PATH="/lib/x86_64-linux-gnu/security" 
+SECURITY_PATH="/lib/$(uname -m)-linux-gnu/security" 
 if ! check_pam_directory "${SECURITY_PATH}"; then
   echo "PAM directory was not found in '/lib/x86_64-linux-gnu/security/'. It looks like you're not running Ubuntu nor Debian."
   echo "Checking '/lib/security/'..."
