@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Run linters
         run: make lint
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -51,7 +51,7 @@ jobs:
       - name: Build
         run: make clean build/pam_wsl_hello.so
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         name: Upload artifact
         with:
           name: "PAM module"
@@ -64,12 +64,12 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Build
         run: make clean build/WindowsHelloBridge.exe
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         name: Upload artifacts
         with:
           name: "Windows Binary"
@@ -84,14 +84,14 @@ jobs:
     needs: [build-pam-module, build-windows-binary]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: "Windows Binary"
           path: build
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: "PAM module"
           path: build
@@ -117,7 +117,7 @@ jobs:
           make -d release RELEASE="$release_name"
           echo "::set-output name=release_asset::$release_name.tar.gz"
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: ${{ github.event.inputs.should_publish != 'yes' }}
         name: Upload the release asset (CI)
         with:
