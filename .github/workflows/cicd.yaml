@@ -34,16 +34,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          default: true
-          override: true
+          
+      - name: "Install Rust"
+        run: |
+          rustup toolchain install ${{ inputs.rust }} --profile minimal --no-self-update
+          rustup default ${{ inputs.rust }}
+        shell: bash
 
       - name: Enable Rust cache
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
 
       - name: Install libpam
         run: sudo apt-get install libpam0g-dev
