@@ -60,7 +60,7 @@ fn main() {
                 let pem_key = creator::create_public_key(key_name)?;
                 let file_name = format!("./{}.pem", key_name);
                 println!("file name: {}", file_name);
-                std::fs::write(&file_name, &pem_key).unwrap();
+                std::fs::write(&file_name, pem_key).unwrap();
                 println!(
                     "Done. The public credential key is written in '{}'",
                     file_name
