@@ -216,7 +216,7 @@ fn authenticate_via_hello(pamh: *mut pam_handle_t) -> Result<i32, HelloAuthentic
         let challenge_tmpfile_in = Stdio::from(challenge_tmpfile);
 
         let authenticator_path = get_authenticator_path()?;
-        let authenticator = Command::new(&authenticator_path)
+        let authenticator = Command::new(authenticator_path)
             .arg("authenticator")
             .arg(credential_key_name)
             .current_dir(Path::new(&get_win_mnt()?))
