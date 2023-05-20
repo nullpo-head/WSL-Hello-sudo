@@ -11,4 +11,4 @@ name = "WindowsHelloBridge"
 path = "src/main.rs"
 
 [dependencies]
-windows = { version = "0.32", features = ["alloc", "Foundation", "Security_Credentials", "Security_Cryptography", "Storage_Streams", "UI_Popups", "Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+windows = { version = "0.27", features = ["alloc", "Foundation", "Security_Credentials", "Security_Cryptography", "Storage_Streams", "UI_Popups", "Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
