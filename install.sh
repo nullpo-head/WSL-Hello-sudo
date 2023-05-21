@@ -60,7 +60,7 @@ if [[ ! -e "${MNT}" ]]; then
   read -r MNT
 fi
 
-WINUSER=$("${MNT}/Windows/System32/cmd.exe" /C "echo | set /p dummy=%username%") # Hacky. Get Windows's user name without new line
+WINUSER=$("${MNT}/Windows/System32/whoami.exe"|tr -dc '[:print:]'|awk -F \\ '{print $2}') # Hacky. Get Windows user name
 DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/AppData/Local/Programs/wsl-hello-sudo"
 OLD_DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/pam_wsl_hello"
 
