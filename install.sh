@@ -60,7 +60,7 @@ if [[ ! -e "${MNT}" ]]; then
   read -r MNT
 fi
 
-WINUSER=$("${MNT}/Windows/System32/cmd.exe" /C "echo | set /p dummy=%username%") # Hacky. Get Windows's user name without new line
+WINUSER=$("${MNT}/Windows/System32/whoami.exe"|tr -dc '[:print:]'|awk -F \\ '{print $2}') # Hacky. Get Windows user name
 DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/AppData/Local/Programs/wsl-hello-sudo"
 OLD_DEF_PAM_WSL_HELLO_WINPATH="${MNT}/Users/$WINUSER/pam_wsl_hello"
 
@@ -91,12 +91,12 @@ fi
 set +x
 echo_stage "Installing Windows component of WSL-Hello-sudo..."
 set -x
+chmod +x build/WindowsHelloBridge.exe
 cp build/WindowsHelloBridge.exe "$PAM_WSL_HELLO_WINPATH/"
-chmod +x "$PAM_WSL_HELLO_WINPATH/WindowsHelloBridge.exe"
 
 set +x
 echo_stage "Installing PAM module to the Linux system..."
-SECURITY_PATH="/lib/x86_64-linux-gnu/security" 
+SECURITY_PATH="/lib/$(uname -m)-linux-gnu/security" 
 if ! check_pam_directory "${SECURITY_PATH}"; then
   echo "PAM directory was not found in '/lib/x86_64-linux-gnu/security/'. It looks like you're not running Ubuntu nor Debian."
   echo "Checking '/lib/security/'..."

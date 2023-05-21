@@ -16,16 +16,30 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  lint:
-    name: "Run linters"
+  lint-rust:
+    name: "Run Rust linter"
+
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Enable Rust cache
+        uses: Swatinem/rust-cache@v2
+        
+      - name: Run cargo clippy
+        run: cargo clippy -- -D warnings
+          
+  lint-bash:
+    name: "Run bash linter"
 
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Run linters
-        run: make lint
+      - uses: actions/checkout@v3
+      
+      - name: Run shellcheck
+        run: shellcheck install.sh
 
   build-pam-module:
     name: "Build PAM module"
@@ -33,17 +47,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          default: true
-          override: true
-
+      - uses: actions/checkout@v3
+          
       - name: Enable Rust cache
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
 
       - name: Install libpam
         run: sudo apt-get install libpam0g-dev
@@ -51,7 +58,7 @@ jobs:
       - name: Build
         run: make clean build/pam_wsl_hello.so
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         name: Upload artifact
         with:
           name: "PAM module"
@@ -64,12 +71,15 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v2
-
+      - uses: actions/checkout@v3
+      
+      - name: Enable Rust cache
+        uses: Swatinem/rust-cache@v2
+        
       - name: Build
         run: make clean build/WindowsHelloBridge.exe
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         name: Upload artifacts
         with:
           name: "Windows Binary"
@@ -84,14 +94,14 @@ jobs:
     needs: [build-pam-module, build-windows-binary]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: "Windows Binary"
           path: build
 
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: "PAM module"
           path: build
@@ -115,9 +125,9 @@ jobs:
           release_name: release
         run: |
           make -d release RELEASE="$release_name"
-          echo "::set-output name=release_asset::$release_name.tar.gz"
+          echo "release_asset=$release_name.tar.gz" >> $GITHUB_OUTPUT
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         if: ${{ github.event.inputs.should_publish != 'yes' }}
         name: Upload the release asset (CI)
         with:

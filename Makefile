@@ -2,7 +2,7 @@ RELEASE := release
 
 WIN_CARGO="cargo.exe"
 
-.PHONY: all clean cleanall cleanrelease install release lint
+.PHONY: all clean cleanall cleanrelease install release
 
 all: build/pam_wsl_hello.so build/WindowsHelloBridge.exe
 
@@ -39,7 +39,3 @@ release: all
 	cp -R build $(RELEASE)/
 	cp install.sh pam-config $(RELEASE)/
 	tar cvzf $(RELEASE).tar.gz $(RELEASE)
-
-lint:
-	shellcheck install.sh
-	cargo clippy -- -D warnings
