@@ -2,7 +2,6 @@ use crate::FailureReason;
 use std::sync::mpsc;
 use std::time::Duration;
 use windows::{
-    core::Handle,
     Security::{Credentials::KeyCredentialManager, Cryptography::CryptographicBuffer},
     Win32::{
         Foundation::PWSTR,
